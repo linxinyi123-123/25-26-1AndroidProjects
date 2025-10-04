@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             android:orientation="vertical"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             android:background="@color/black"  >
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="2dp">
+
+        <Button
+            android:layout_width="70dp"
+            android:layout_height="30dp"
+            android:layout_marginEnd="2dp"
+            android:background="@drawable/button_border"
+            android:text="One,One"
+            android:textAllCaps="false"
+            android:textColor="#808080" />
+
+        <Button
+            android:layout_width="120dp"
+            android:layout_height="30dp"
+            android:layout_marginEnd="2dp"
+            android:background="@drawable/button_border"
+            android:text="   One,Two   "
+            android:textAllCaps="false"
+            android:textColor="#808080" />
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="30dp"
+        android:text="One,Three"
+        android:textAllCaps="false"
+        android:background="@drawable/button_border"
+        android:textColor="#808080"
+        android:layout_marginEnd="2dp" />
+
+        <Button
+            android:layout_width="77dp"
+            android:layout_height="30dp"
+            android:layout_marginEnd="2dp"
+            android:background="@drawable/button_border"
+            android:text="One,Four"
+            android:textAllCaps="false"
+            android:textColor="#808080" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="2dp">>
+        <Button
+            android:layout_width="70dp"
+            android:layout_height="30dp"
+            android:text="Two,One"
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+        <Button
+            android:layout_width="120dp"
+            android:layout_height="30dp"
+            android:text="   Two,Two   "
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Two,Three"
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Two,Four"
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="2dp">>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Three,One"
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Three,Two"
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Three,Three"
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Three,Four"
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="2dp">
+        <Button
+            android:layout_width="75dp"
+            android:layout_height="30dp"
+            android:text="Four,One"
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+        <Button
+            android:layout_width="110dp"
+            android:layout_height="30dp"
+            android:text="   Four,Two   "
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Four,Three"
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="Four,Four"
+            android:textAllCaps="false"
+            android:background="@drawable/button_border"
+            android:textColor="#808080"
+            android:layout_marginEnd="2dp" />
+    </LinearLayout>
+</LinearLayout>

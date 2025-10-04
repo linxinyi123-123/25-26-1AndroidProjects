@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/top_shadow_box"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:layout_margin="5dp"
+        android:background="@android:color/transparent"
+        app:cardCornerRadius="0dp"
+        app:cardElevation="3dp"
+        app:cardUseCompatPadding="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+    </androidx.cardview.widget.CardView>
+
+    <ImageView
+        android:id="@+id/space_station"
+        android:layout_width="59dp"
+        android:layout_height="52dp"
+        android:contentDescription="空间站"
+        android:elevation="10dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/space_station_icon"
+        tools:layout_editor_absoluteX="41dp"
+        tools:layout_editor_absoluteY="12dp" />
+
+    <TextView
+        android:id="@+id/text_SpaceStations"
+        android:layout_width="124dp"
+        android:layout_height="19dp"
+        android:color="@android:color/transparent"
+        android:gravity="center"
+        android:text="Space Stations"
+        android:textColor="#8C8C8C"
+        android:textSize="15sp"
+        android:elevation="10dp"
+        tools:layout_editor_absoluteX="16dp"
+        tools:layout_editor_absoluteY="64dp" />
+
+    <ImageView
+        android:id="@+id/rocket"
+        android:layout_width="26dp"
+        android:layout_height="39dp"
+        android:contentDescription="火箭"
+        android:scaleType="centerCrop"
+        android:src="@drawable/rocket_icon"
+        android:elevation="10dp"
+        tools:layout_editor_absoluteX="187dp"
+        tools:layout_editor_absoluteY="16dp" />
+
+    <TextView
+        android:id="@+id/text_Flights"
+        android:layout_width="77dp"
+        android:layout_height="23dp"
+        android:color="@android:color/transparent"
+        android:gravity="center"
+        android:text="Flights"
+        android:textColor="#8C8C8C"
+        android:textSize="15sp"
+        android:elevation="10dp"
+        tools:layout_editor_absoluteX="163dp"
+        tools:layout_editor_absoluteY="65dp" />
+
+    <ImageView
+        android:id="@+id/rover"
+        android:layout_width="60dp"
+        android:layout_height="32dp"
+        android:contentDescription="火星车"
+        android:scaleType="centerCrop"
+        android:src="@drawable/rover_icon"
+        android:elevation="10dp"
+        tools:layout_editor_absoluteX="300dp"
+        tools:layout_editor_absoluteY="16dp" />
+
+    <TextView
+        android:id="@+id/text_Rovers"
+        android:layout_width="67dp"
+        android:layout_height="20dp"
+        android:color="@android:color/transparent"
+        android:gravity="center"
+        android:text="Rovers"
+        android:textColor="#8C8C8C"
+        android:textSize="15sp"
+        android:elevation="10dp"
+        tools:layout_editor_absoluteX="300dp"
+        tools:layout_editor_absoluteY="64dp" />
+
+    <ImageView
+        android:id="@+id/double_arrows"
+        android:layout_width="85dp"
+        android:layout_height="64dp"
+        android:contentDescription="双箭头"
+        android:elevation="2dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/double_arrows"
+        app:layout_constraintBottom_toBottomOf="@+id/DCA"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/DCA" />
+
+    <ImageView
+        android:id="@+id/rocket2"
+        android:layout_width="25dp"
+        android:layout_height="37dp"
+        android:contentDescription="火箭2"
+        android:scaleType="centerCrop"
+        android:src="@drawable/rocket_icon"
+        app:layout_constraintBottom_toTopOf="@+id/depart"
+        app:layout_constraintEnd_toStartOf="@+id/galaxy"
+        app:layout_constraintHorizontal_bias="0.735"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/DCA"
+        app:layout_constraintVertical_bias="0.409" />
+
+    <ImageView
+        android:id="@+id/galaxy"
+        android:layout_width="89dp"
+        android:layout_height="86dp"
+        android:layout_marginTop="148dp"
+        android:contentDescription="星系"
+        android:scaleType="centerCrop"
+        android:src="@drawable/galaxy"
+        app:layout_constraintBottom_toTopOf="@+id/depart"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/double_arrows"
+        app:layout_constraintVertical_bias="0.0" />
+
+    <TextView
+        android:id="@+id/DCA"
+        android:layout_width="145dp"
+        android:layout_height="110dp"
+        android:background="#2B643C"
+        android:gravity="center"
+        android:text="DCA"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.2"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.25" />
+
+    <TextView
+        android:id="@+id/MARS"
+        android:layout_width="145dp"
+        android:layout_height="110dp"
+        android:background="#2B643C"
+        android:gravity="center"
+        android:text="MARS"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        app:layout_constraintHorizontal_bias="0.8"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintVertical_bias="0.25" />
+
+    <Switch
+        android:id="@+id/OneWay_switch"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:background="#B86324"
+        android:checked="true"
+        android:text="One Way"
+        android:textColor="#FFFFFF"
+        android:thumbTint="@color/white"
+        android:trackTint="#7A4B23"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.15"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/DCA" />
+
+    <TextView
+        android:id="@+id/Traveller"
+        android:layout_width="79dp"
+        android:layout_height="23dp"
+        android:layout_marginTop="12dp"
+        android:background="#B86324"
+        android:gravity="center"
+        android:text="1 Traveller"
+        android:textColor="@color/white"
+        android:textSize="15sp"
+        app:layout_constraintTop_toBottomOf="@+id/OneWay_switch"
+        tools:layout_editor_absoluteX="44dp" />
+
+    <TextView
+        android:id="@+id/depart"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:layout_marginBottom="8dp"
+        android:background="#2B653A"
+        android:gravity="center"
+        android:text="DEPART"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <androidx.constraintlayout.helper.widget.Layer android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <androidx.constraintlayout.helper.widget.Layer android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

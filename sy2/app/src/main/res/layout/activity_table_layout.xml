@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/black">
+
+    <!-- 标题行 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Hello TableLayout"
+        android:textColor="#FFFFFF"
+        android:background="#808080"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:paddingBottom="6dp" />
+
+    <!-- 表格布局开始 -->
+    <TableLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:stretchColumns="0">
+
+        <!-- 第一组菜单项 -->
+        <TableRow
+            android:layout_marginBottom="6dp">
+
+            <Button
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Open..."
+                android:textAlignment="textStart"
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu"
+                android:layout_marginEnd="2dp" />
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ctrl-O"
+                android:textAlignment="textStart"
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu" />
+        </TableRow>
+
+        <TableRow
+            android:layout_marginBottom="6dp">
+
+            <Button
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Save..."
+                android:textAlignment="textStart"
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu"
+                android:layout_marginEnd="2dp" />
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ctrl-S"
+                android:textAlignment="textStart"
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu" />
+        </TableRow>
+
+        <TableRow
+            android:layout_marginBottom="6dp">
+
+            <Button
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Save As..."
+                android:textAlignment="textStart"
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu"
+                android:layout_marginEnd="2dp" />
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ctrl-Shift-S"
+                android:textAlignment="textStart"
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu" />
+        </TableRow>
+
+        <!-- 分隔线 -->
+        <View
+            android:layout_height="1dp"
+            android:background="#808080"
+            android:layout_marginBottom="6dp" />
+
+        <!-- 第二组菜单项 -->
+        <TableRow
+            android:layout_marginBottom="6dp">
+
+            <Button
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="X Import..."
+                android:textAlignment="textStart"
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu"
+                android:layout_marginEnd="2dp" />
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu" />
+        </TableRow>
+
+        <TableRow
+            android:layout_marginBottom="6dp">
+
+            <Button
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="X Export..."
+                android:textAlignment="textStart"
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu"
+                android:layout_marginEnd="2dp" />
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ctrl-E"
+                android:textAlignment="textStart"
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu" />
+        </TableRow>
+
+        <!-- 分隔线 -->
+        <View
+            android:layout_height="1dp"
+            android:background="#808080"
+            android:layout_marginBottom="6dp" />
+
+        <!-- 最后一行 -->
+        <TableRow>
+
+            <Button
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Quit"
+                android:textAlignment="textStart"
+                android:textAllCaps="false"
+                android:textColor="#808080"
+                android:background="@drawable/button_border_menu" />
+
+            <!-- 空单元格保持对齐 -->
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:background="@drawable/button_border_menu"
+                android:visibility="invisible" />
+        </TableRow>
+
+    </TableLayout>
+</LinearLayout>
