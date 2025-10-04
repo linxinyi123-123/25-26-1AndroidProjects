@@ -27,7 +27,7 @@
             ……
             </LinearLayout>
      </LinearLayout>
-![alt text](image.png)
+![alt text](https://github.com/linxinyi123-123/25-26-1AndroidProjects/blob/master/sy2/LinearLayout.png)
 ## 2.表格布局TableLayout  
 1.这题我是外层线性布局，把标题的TextView和表格布局并列一个层次。  
   
@@ -38,7 +38,7 @@ layout_width="0dp"：忽略内容宽度
 layout_weight="1"：按权重1分配剩余空间  
   
 3.分隔线就是用一个View,hight=1dp  
-![alt text](image-1.png)  
+![alt text](https://github.com/linxinyi123-123/25-26-1AndroidProjects/blob/master/sy2/TableLayout.png)  
 ## 3.约束布局计算器界面ConstraintLayout  
 1.约束布局首先要在build.gradle加一个依赖implementation("androidx.constraintlayout:constraintlayout:2.1.4")  
 然后要写完整androidx.constraintlayout.widget.ConstraintLayout  
@@ -46,7 +46,7 @@ layout_weight="1"：按权重1分配剩余空间
 2.上面三个框用相对约束，每个都约束了Start,End,Top。  
 
 3.下面按钮的部分同一排就用水平Chains约束，chainStyle="spread"。每一排第一个按钮Top与上一排的Bottom间隔30dp，后面三个按钮的Start、End前后相连,Top就和第一个按钮Top对齐。
-![alt text](image-2.png)
+![alt text](https://github.com/linxinyi123-123/25-26-1AndroidProjects/blob/master/sy2/ConstraintLayout1.png)
 ## 4.约束布局界面二ConostraintLayout  
 1.用到了相对约束、偏向约束Bias。  
 ```  
@@ -62,4 +62,4 @@ layout_weight="1"：按权重1分配剩余空间
 3.顶部的阴影框用的是androidx.cardview.widget.CardView，需要先引入implementation("androidx.cardview:cardview:1.0.0")  
 
 4.One Way开关是Switch  
-![alt text](image-5.png)
+![alt text](https://github.com/linxinyi123-123/25-26-1AndroidProjects/blob/master/sy2/ConstraintLayout2.png)
