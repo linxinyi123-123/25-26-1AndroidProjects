@@ -6,20 +6,6 @@
     android:layout_height="match_parent">
 
     <TextView
-        android:id="@+id/title"
-        android:layout_width="match_parent"
-        android:layout_height="40dp"
-        android:background="#007D6F"
-        android:text="ConstraintLayoutTest"
-        android:paddingVertical="4dp"
-        android:paddingHorizontal="8dp"
-        android:textColor="#FFFFFF"
-        android:textSize="18sp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <TextView
         android:id="@+id/Input"
         android:layout_width="match_parent"
         android:layout_height="60dp"
@@ -28,10 +14,12 @@
         android:paddingVertical="10dp"
         android:paddingHorizontal="8dp"
         android:textColor="#A0A0A0"
-        android:textSize="23sp"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:textSize="27sp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/result"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/title" />
+        app:layout_constraintEnd_toEndOf="parent"
+         />
 
     <TextView
         android:id="@+id/result"
@@ -44,20 +32,23 @@
         android:textAlignment="textEnd"
         android:textColor="#575748"
         android:textSize="23sp"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/Input"
+        app:layout_constraintBottom_toTopOf="@+id/chain1_7"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/Input" />
+        app:layout_constraintEnd_toEndOf="parent"
+         />
 
     <Button
         android:id="@+id/chain1_7"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="7"
-        android:layout_marginTop="30dp"
+        app:layout_constraintHorizontal_chainStyle="spread"
+        app:layout_constraintTop_toBottomOf="@id/result"
+        app:layout_constraintBottom_toTopOf="@+id/chain2_4"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/chain1_8"
-        app:layout_constraintHorizontal_chainStyle="spread"
-        app:layout_constraintTop_toBottomOf="@id/result"  />
+         />
 
     <Button
         android:id="@+id/chain1_8"
@@ -91,11 +82,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="4"
-        android:layout_marginTop="30dp"
+        app:layout_constraintHorizontal_chainStyle="spread"
+        app:layout_constraintTop_toBottomOf="@id/chain1_7"
+        app:layout_constraintBottom_toTopOf="@+id/chain3_1"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/chain2_5"
-        app:layout_constraintHorizontal_chainStyle="spread"
-        app:layout_constraintTop_toBottomOf="@id/chain1_7"  />
+          />
 
     <Button
         android:id="@+id/chain2_5"
@@ -129,11 +121,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="1"
-        android:layout_marginTop="30dp"
+        app:layout_constraintHorizontal_chainStyle="spread"
+        app:layout_constraintTop_toBottomOf="@id/chain2_4"
+        app:layout_constraintBottom_toTopOf="@id/chain4_dot"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/chain3_2"
-        app:layout_constraintHorizontal_chainStyle="spread"
-        app:layout_constraintTop_toBottomOf="@id/chain2_4"  />
+          />
 
     <Button
         android:id="@+id/chain3_2"
@@ -167,11 +160,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="."
-        android:layout_marginTop="30dp"
+        app:layout_constraintHorizontal_chainStyle="spread"
+        app:layout_constraintTop_toBottomOf="@id/chain3_1"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/chain4_0"
-        app:layout_constraintHorizontal_chainStyle="spread"
-        app:layout_constraintTop_toBottomOf="@id/chain3_1"  />
+          />
 
     <Button
         android:id="@+id/chain4_0"

@@ -43,9 +43,9 @@ layout_weight="1"：按权重1分配剩余空间
 1.约束布局首先要在build.gradle加一个依赖implementation("androidx.constraintlayout:constraintlayout:2.1.4")  
 然后要写完整androidx.constraintlayout.widget.ConstraintLayout  
 
-2.上面三个框用相对约束，每个都约束了Start,End,Top。  
+2.上面两个TextView框用相对约束，每个都约束了Start,End,Top，Bottom。  
 
-3.下面按钮的部分同一排就用水平Chains约束，chainStyle="spread"。每一排第一个按钮Top与上一排的Bottom间隔30dp，后面三个按钮的Start、End前后相连,Top就和第一个按钮Top对齐。
+3.下面按钮的部分同一排就用水平Chains约束，chainStyle="spread"。每一排第一个按钮Top约束上下左右，后面三个按钮约束左右上。Start、End前后相连,Top就和第一个按钮Top对齐。这样子都写完之后所有的模块会自动拉伸开。
 ![alt text](https://github.com/linxinyi123-123/25-26-1AndroidProjects/blob/master/sy2/ConstraintLayout1.png)
 ## 4.约束布局界面二ConostraintLayout  
 1.用到了相对约束、偏向约束Bias。  

@@ -9,7 +9,7 @@
     <androidx.cardview.widget.CardView
         android:id="@+id/top_shadow_box"
         android:layout_width="match_parent"
-        android:layout_height="100dp"
+        android:layout_height="70dp"
         android:layout_margin="5dp"
         android:background="@android:color/transparent"
         app:cardCornerRadius="0dp"
@@ -19,79 +19,90 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
+
     </androidx.cardview.widget.CardView>
 
     <ImageView
         android:id="@+id/space_station"
-        android:layout_width="59dp"
-        android:layout_height="52dp"
+        android:layout_width="75dp"
+        android:layout_height="40dp"
         android:contentDescription="空间站"
         android:elevation="10dp"
         android:scaleType="centerCrop"
         android:src="@drawable/space_station_icon"
-        tools:layout_editor_absoluteX="41dp"
-        tools:layout_editor_absoluteY="12dp" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/rocket"
+        app:layout_constraintTop_toTopOf="@id/top_shadow_box"
+
+         />
 
     <TextView
         android:id="@+id/text_SpaceStations"
-        android:layout_width="124dp"
-        android:layout_height="19dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:color="@android:color/transparent"
         android:gravity="center"
         android:text="Space Stations"
         android:textColor="#8C8C8C"
         android:textSize="15sp"
         android:elevation="10dp"
-        tools:layout_editor_absoluteX="16dp"
-        tools:layout_editor_absoluteY="64dp" />
+        app:layout_constraintStart_toStartOf="@id/top_shadow_box"
+        app:layout_constraintEnd_toStartOf="@id/text_Flights"
+        app:layout_constraintBottom_toBottomOf="@id/top_shadow_box"
+        />
 
     <ImageView
         android:id="@+id/rocket"
-        android:layout_width="26dp"
-        android:layout_height="39dp"
+        android:layout_width="30dp"
+        android:layout_height="40dp"
         android:contentDescription="火箭"
         android:scaleType="centerCrop"
         android:src="@drawable/rocket_icon"
         android:elevation="10dp"
-        tools:layout_editor_absoluteX="187dp"
-        tools:layout_editor_absoluteY="16dp" />
+        app:layout_constraintStart_toEndOf="@id/space_station"
+        app:layout_constraintEnd_toStartOf="@id/rover"
+        app:layout_constraintTop_toTopOf="@id/top_shadow_box"/>
 
     <TextView
         android:id="@+id/text_Flights"
-        android:layout_width="77dp"
-        android:layout_height="23dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:color="@android:color/transparent"
         android:gravity="center"
         android:text="Flights"
         android:textColor="#8C8C8C"
         android:textSize="15sp"
         android:elevation="10dp"
-        tools:layout_editor_absoluteX="163dp"
-        tools:layout_editor_absoluteY="65dp" />
+        app:layout_constraintStart_toEndOf="@id/text_SpaceStations"
+        app:layout_constraintEnd_toStartOf="@id/text_Rovers"
+        app:layout_constraintBottom_toBottomOf="@id/top_shadow_box"
+        />
 
     <ImageView
         android:id="@+id/rover"
-        android:layout_width="60dp"
-        android:layout_height="32dp"
+        android:layout_width="50dp"
+        android:layout_height="40dp"
         android:contentDescription="火星车"
         android:scaleType="centerCrop"
         android:src="@drawable/rover_icon"
         android:elevation="10dp"
-        tools:layout_editor_absoluteX="300dp"
-        tools:layout_editor_absoluteY="16dp" />
+        app:layout_constraintStart_toEndOf="@id/rocket"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/top_shadow_box"/>
 
     <TextView
-        android:id="@+id/text_Rovers"
-        android:layout_width="67dp"
-        android:layout_height="20dp"
-        android:color="@android:color/transparent"
-        android:gravity="center"
-        android:text="Rovers"
-        android:textColor="#8C8C8C"
-        android:textSize="15sp"
-        android:elevation="10dp"
-        tools:layout_editor_absoluteX="300dp"
-        tools:layout_editor_absoluteY="64dp" />
+    android:id="@+id/text_Rovers"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:color="@android:color/transparent"
+    android:elevation="10dp"
+    android:gravity="center"
+    android:text="Rovers"
+    android:textColor="#8C8C8C"
+    android:textSize="15sp"
+    app:layout_constraintStart_toEndOf="@id/text_Flights"
+    app:layout_constraintEnd_toEndOf="@id/top_shadow_box"
+    app:layout_constraintBottom_toBottomOf="@id/top_shadow_box"/>
 
     <ImageView
         android:id="@+id/double_arrows"
