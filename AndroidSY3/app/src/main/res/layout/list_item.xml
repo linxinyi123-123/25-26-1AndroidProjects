@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp"
+    android:orientation="horizontal">
+    <!-- 动物名称-->
+    <TextView
+        android:id="@+id/animal_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Lion"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <!-- 动物图片 -->
+    <ImageView
+        android:id="@+id/animal_image"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:src="@drawable/lion"
+        android:contentDescription="@string/animal_image_desc"
+        android:layout_marginStart="16dp" />
+
+
+</LinearLayout>
