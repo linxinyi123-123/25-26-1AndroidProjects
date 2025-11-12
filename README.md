@@ -8,9 +8,9 @@
 
 [sy1](./sy1/) - 实验1: helloworld
 
-[sy2](./sy2/) - 实验2: 线性布局、表格布局、约束布局（写了[README.MD](./sy2/README.md)）
+[sy2](./sy2/) - 实验2: 线性布局、表格布局、约束布局（写了[README.md](./sy2/README.md)）
 
-
+[sy3](./AndroidSY3/) - 实验3: Android界面组件（写了[sy3report.md](./AndroidSY3/sy3report.md)）
 
 ## 开发环境
 
