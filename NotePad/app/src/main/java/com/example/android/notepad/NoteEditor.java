@@ -16,6 +16,8 @@
 
 package com.example.android.notepad;
 
+import static com.example.android.notepad.R.*;
+
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -432,19 +434,16 @@ public class NoteEditor extends Activity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle all of the possible menu actions.
-        switch (item.getItemId()) {
-        case R.id.menu_save:
+        int id = item.getItemId();
+        if(id== R.id.menu_save) {
             String text = mText.getText().toString();
             updateNote(text, null);
             finish();
-            break;
-        case R.id.menu_delete:
+        } else if (id == R.id.menu_delete) {
             deleteNote();
             finish();
-            break;
-        case R.id.menu_revert:
+        } else if (id == R.id.menu_revert) {
             cancelNote();
-            break;
         }
         return super.onOptionsItemSelected(item);
     }
