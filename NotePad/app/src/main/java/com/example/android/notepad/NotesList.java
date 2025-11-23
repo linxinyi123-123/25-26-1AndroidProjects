@@ -28,6 +28,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.Menu;
@@ -38,7 +39,9 @@ import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
+import android.widget.TextView;
 
+import java.util.Date;
 
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
@@ -61,10 +64,14 @@ public class NotesList extends ListActivity {
     private static final String[] PROJECTION = new String[] {
             NotePad.Notes._ID, // 0
             NotePad.Notes.COLUMN_NAME_TITLE, // 1
+            NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE, // 2 - 新增时间戳字段
     };
 
     /** The index of the title column */
     private static final int COLUMN_INDEX_TITLE = 1;
+
+    /** The index of the modification date column */
+    private static final int COLUMN_INDEX_MODIFICATION_DATE = 2;
 
     /**
      * onCreate is called when Android starts this Activity from scratch.
@@ -102,11 +109,11 @@ public class NotesList extends ListActivity {
          * Please see the introductory note about performing provider operations on the UI thread.
          */
         Cursor cursor = managedQuery(
-            getIntent().getData(),            // Use the default content URI for the provider.
-            PROJECTION,                       // Return the note ID and title for each note.
-            null,                             // No where clause, return all records.
-            null,                             // No where clause, therefore no where column values.
-            NotePad.Notes.DEFAULT_SORT_ORDER  // Use the default sort order.
+                getIntent().getData(),            // Use the default content URI for the provider.
+                PROJECTION,                       // Return the note ID, title and modification date for each note.
+                null,                             // No where clause, return all records.
+                null,                             // No where clause, therefore no where column values.
+                NotePad.Notes.DEFAULT_SORT_ORDER  // Use the default sort order.
         );
 
         /*
@@ -117,26 +124,66 @@ public class NotesList extends ListActivity {
          * value will appear in the ListView.
          */
 
-        // The names of the cursor columns to display in the view, initialized to the title column
-        String[] dataColumns = { NotePad.Notes.COLUMN_NAME_TITLE } ;
+        // The names of the cursor columns to display in the view, initialized to the title and modification date columns
+        String[] dataColumns = {
+                NotePad.Notes.COLUMN_NAME_TITLE,
+                NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE
+        };
 
-        // The view IDs that will display the cursor columns, initialized to the TextView in
+        // The view IDs that will display the cursor columns, initialized to the TextViews in
         // noteslist_item.xml
-        int[] viewIDs = { android.R.id.text1 };
+        int[] viewIDs = {
+                android.R.id.text1,
+                R.id.text2
+        };
 
         // Creates the backing adapter for the ListView.
         SimpleCursorAdapter adapter
-            = new SimpleCursorAdapter(
-                      this,                             // The Context for the ListView
-                      R.layout.noteslist_item,          // Points to the XML for a list item
-                      cursor,                           // The cursor to get items from
-                      dataColumns,
-                      viewIDs
-              );
+                = new SimpleCursorAdapter(
+                this,                             // The Context for the ListView
+                R.layout.noteslist_item,          // Points to the XML for a list item
+                cursor,                           // The cursor to get items from
+                dataColumns,
+                viewIDs
+        );
+
+        // 设置ViewBinder来自定义时间戳的显示格式
+        adapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
+            @Override
+            public boolean setViewValue(View view, Cursor cursor, int columnIndex) {
+                if (columnIndex == COLUMN_INDEX_MODIFICATION_DATE) {
+                    // 处理时间戳显示
+                    TextView textView = (TextView) view;
+                    long timestamp = cursor.getLong(columnIndex);
+                    String formattedTime = formatTimestamp(timestamp);
+                    textView.setText(formattedTime);
+                    return true;
+                }
+                return false;
+            }
+        });
 
         // Sets the ListView's adapter to be the cursor adapter that was just created.
         setListAdapter(adapter);
     }
+
+    /**
+     * 格式化时间戳为易读的日期时间字符串
+     * @param timestamp 时间戳（毫秒）
+     * @return 格式化后的时间字符串
+     */
+    private String formatTimestamp(long timestamp) {
+        if (timestamp == 0) {
+            return "Unknown time";
+        }
+
+        Date date = new Date(timestamp);
+        java.text.DateFormat dateFormat = DateFormat.getDateFormat(this);
+        java.text.DateFormat timeFormat = DateFormat.getTimeFormat(this);
+
+        return dateFormat.format(date) + " " + timeFormat.format(date);
+    }
+
 
     /**
      * Called when the user clicks the device's Menu button the first time for
