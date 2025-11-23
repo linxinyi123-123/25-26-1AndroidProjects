@@ -39,6 +39,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.EditText;
+import androidx.appcompat.widget.AppCompatEditText;
 
 /**
  * This Activity handles "editing" a note, where editing is responding to
@@ -83,7 +84,7 @@ public class NoteEditor extends Activity {
     /**
      * Defines a custom EditText View that draws lines between each line of text that is displayed.
      */
-    public static class LinedEditText extends EditText {
+    public static class LinedEditText extends AppCompatEditText {
         private Rect mRect;
         private Paint mPaint;
 
@@ -367,8 +368,13 @@ public class NoteEditor extends Activity {
                  * that is being edited.
                  */
             } else if (mState == STATE_EDIT) {
-                // Creates a map to contain the new values for the columns
-                updateNote(text, null);
+                // 只有在内容实际发生变化时才更新
+                int colNoteIndex = mCursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_NOTE);
+                String originalNote = mCursor.getString(colNoteIndex);
+
+                if (!text.equals(originalNote)) {
+                    updateNote(text, null);
+                }
             } else if (mState == STATE_INSERT) {
                 updateNote(text, text);
                 mState = STATE_EDIT;
