@@ -53,4 +53,12 @@
     <string name="no_notes_in_category">该分类下没有笔记</string>
     <string name="no_search_results">没有找到匹配的笔记</string>
     <string name="no_notes_yet">还没有笔记，点击右下角按钮创建新笔记</string>
+
+    <!-- 便签小部件相关 -->
+    <string name="menu_create_widget">创建便签</string>
+    <string name="widget_title">笔记便签</string>
+    <string name="widget_configure_title">选择便签笔记</string>
+    <string name="widget_note_not_found">笔记不存在</string>
+    <string name="widget_note_deleted">笔记已被删除</string>
+    <string name="widget_click_to_configure">点击配置便签</string>
 </resources>

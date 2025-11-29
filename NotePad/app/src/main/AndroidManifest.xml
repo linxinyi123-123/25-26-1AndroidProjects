@@ -87,10 +87,33 @@
             </intent-filter>
         </activity>
 
+        <!-- 笔记便签小部件 -->
+        <receiver
+            android:name=".NoteWidgetProvider"
+            android:exported="true"
+            android:label="笔记便签">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.android.notepad.ACTION_WIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info" />
+        </receiver>
+
+        <!-- 小部件配置Activity -->
+        <activity
+            android:name=".NoteWidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Holo.Light.Dialog">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
     </application>
 
     <!-- 添加必要的权限 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
-</manifest>
+   </manifest>

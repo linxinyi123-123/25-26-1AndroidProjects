@@ -20,6 +20,7 @@ import com.example.android.notepad.NotePad;
 
 import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.appwidget.AppWidgetManager;
 import android.content.ClipboardManager;
 import android.content.ClipData;
 import android.content.ComponentName;
@@ -902,6 +903,7 @@ public class NotesList extends ListActivity {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         menu.addIntentOptions(Menu.CATEGORY_ALTERNATIVE, 0, 0,
                 new ComponentName(this, NotesList.class), null, intent, 0, null);
+        
     }
 
     @Override
@@ -942,6 +944,10 @@ public class NotesList extends ListActivity {
                     null
             );
             return true;
+        } else if (id == R.id.context_create_widget) {
+            // 创建便签小部件
+            createNoteWidget(info.id);
+            return true;
         }
         return super.onContextItemSelected(item);
     }
@@ -972,5 +978,50 @@ public class NotesList extends ListActivity {
         super.onResume();
         // 刷新列表以显示可能的更改
         refreshNotesList();
+    }
+
+    /**
+     * 创建笔记便签小部件
+     */
+    private void createNoteWidget(long noteId) {
+        // 获取笔记标题用于显示
+        Cursor cursor = getContentResolver().query(
+                ContentUris.withAppendedId(getIntent().getData(), noteId),
+                new String[]{NotePad.Notes.COLUMN_NAME_TITLE},
+                null, null, null);
+
+        String noteTitle = "笔记";
+        if (cursor != null && cursor.moveToFirst()) {
+            noteTitle = cursor.getString(0);
+            cursor.close();
+        }
+
+        // 显示更友好的提示信息
+        Toast.makeText(this, "便签功能已就绪！\n如需新便签，请从桌面添加", Toast.LENGTH_LONG).show();
+
+        // 可选：提供直接打开小部件配置的选项
+        showWidgetCreationDialog(noteId, noteTitle);
+    }
+
+    /**
+     * 显示便签创建对话框
+     */
+    private void showWidgetCreationDialog(final long noteId, final String noteTitle) {
+        new AlertDialog.Builder(this)
+                .setTitle("创建便签")
+                .setMessage("您想为笔记《" + noteTitle + "》创建便签吗？\n\n" +
+                        "• 如需新便签：请从桌面添加小部件\n" +
+                        "• 如需更新现有便签：长按桌面便签重新配置")
+                .setPositiveButton("从桌面添加", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // 指导用户如何添加
+                        Toast.makeText(NotesList.this,
+                                "请长按桌面 → 选择小部件 → 找到\"笔记便签\"",
+                                Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 }
