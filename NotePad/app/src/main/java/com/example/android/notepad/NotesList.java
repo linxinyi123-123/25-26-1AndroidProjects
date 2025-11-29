@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      `http://www.apache.org/licenses/LICENSE-2.0`  
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,166 +18,187 @@ package com.example.android.notepad;
 
 import com.example.android.notepad.NotePad;
 
+import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.content.ClipboardManager;
 import android.content.ClipData;
 import android.content.ComponentName;
 import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.ContextMenu;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.BaseAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
+import androidx.appcompat.widget.SearchView;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
  * provided in the incoming Intent if there is one, otherwise it defaults to displaying the
  * contents of the {@link NotePadProvider}.
- *
- * NOTE: Notice that the provider operations in this Activity are taking place on the UI thread.
- * This is not a good practice. It is only done here to make the code more readable. A real
- * application should use the {@link android.content.AsyncQueryHandler} or
- * {@link android.os.AsyncTask} object to perform operations asynchronously on a separate thread.
  */
 public class NotesList extends ListActivity {
 
-    // For logging and debugging
     private static final String TAG = "NotesList";
 
-    /**
-     * The columns needed by the cursor adapter
-     */
     private static final String[] PROJECTION = new String[] {
             NotePad.Notes._ID, // 0
             NotePad.Notes.COLUMN_NAME_TITLE, // 1
-            NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE, // 2 - 新增时间戳字段
+            NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE, // 2
+            NotePad.Notes.COLUMN_NAME_CATEGORY, // 3
     };
 
-    /** The index of the title column */
     private static final int COLUMN_INDEX_TITLE = 1;
-
-    /** The index of the modification date column */
     private static final int COLUMN_INDEX_MODIFICATION_DATE = 2;
+    private static final int COLUMN_INDEX_CATEGORY = 3;
 
-    /**
-     * onCreate is called when Android starts this Activity from scratch.
-     */
+    // 分类颜色映射
+    private static final Map<String, Integer> CATEGORY_COLORS = new HashMap<String, Integer>();
+    static {
+        CATEGORY_COLORS.put("默认分类", 0xFF2196F3);
+        CATEGORY_COLORS.put("工作", 0xFF4CAF50);
+        CATEGORY_COLORS.put("学习", 0xFFFF9800);
+        CATEGORY_COLORS.put("生活", 0xFF9C27B0);
+        CATEGORY_COLORS.put("想法", 0xFF607D8B);
+        CATEGORY_COLORS.put("购物清单", 0xFFFF5722);
+    }
+
+    private static final int[] COLOR_OPTIONS = {
+            0xFFF44336, 0xFFE91E63, 0xFF9C27B0, 0xFF673AB7, 0xFF3F51B5,
+            0xFF2196F3, 0xFF03A9F4, 0xFF00BCD4, 0xFF009688, 0xFF4CAF50,
+            0xFF8BC34A, 0xFFCDDC39, 0xFFFFEB3B, 0xFFFFC107, 0xFFFF9800,
+            0xFFFF5722, 0xFF795548, 0xFF9E9E9E, 0xFF607D8B
+    };
+
+    // 分类筛选状态
+    private String mCurrentFilterCategory = null;
+    private String mCurrentSearchQuery = null;
+    private SimpleCursorAdapter mAdapter;
+    private Cursor mCursor;
+    private int selectedColor = 0xFF2196F3;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
 
-        // 设置背景色
         getListView().setBackgroundColor(getResources().getColor(R.color.background_light));
-
-        // 移除默认分隔线，我们使用自定义的分隔线
         getListView().setDivider(null);
         getListView().setDividerHeight(0);
 
-        // The user does not need to hold down the key to use menu shortcuts.
         setDefaultKeyMode(DEFAULT_KEYS_SHORTCUT);
 
-        /* If no data is given in the Intent that started this Activity, then this Activity
-         * was started when the intent filter matched a MAIN action. We should use the default
-         * provider URI.
-         */
-        // Gets the intent that started this Activity.
         Intent intent = getIntent();
-
-        // If there is no data associated with the Intent, sets the data to the default URI, which
-        // accesses a list of notes.
         if (intent.getData() == null) {
             intent.setData(NotePad.Notes.CONTENT_URI);
         }
 
-        /*
-         * Sets the callback for context menu activation for the ListView. The listener is set
-         * to be this Activity. The effect is that context menus are enabled for items in the
-         * ListView, and the context menu is handled by a method in NotesList.
-         */
         getListView().setOnCreateContextMenuListener(this);
 
-        /* Performs a managed query. The Activity handles closing and requerying the cursor
-         * when needed.
-         *
-         * Please see the introductory note about performing provider operations on the UI thread.
-         */
+        // 初始化列表
+        initializeList();
+    }
+
+    /**
+     * 初始化列表数据
+     */
+    private void initializeList() {
+
         Cursor cursor = managedQuery(
-                getIntent().getData(),            // Use the default content URI for the provider.
-                PROJECTION,                       // Return the note ID, title and modification date for each note.
-                null,                             // No where clause, return all records.
-                null,                             // No where clause, therefore no where column values.
-                NotePad.Notes.DEFAULT_SORT_ORDER  // Use the default sort order.
+                getIntent().getData(),
+                PROJECTION,
+                null,
+                null,
+                NotePad.Notes.DEFAULT_SORT_ORDER
         );
 
-        /*
-         * The following two arrays create a "map" between columns in the cursor and view IDs
-         * for items in the ListView. Each element in the dataColumns array represents
-         * a column name; each element in the viewID array represents the ID of a View.
-         * The SimpleCursorAdapter maps them in ascending order to determine where each column
-         * value will appear in the ListView.
-         */
-
-        // The names of the cursor columns to display in the view, initialized to the title and modification date columns
         String[] dataColumns = {
                 NotePad.Notes.COLUMN_NAME_TITLE,
-                NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE
+                NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE,
+                NotePad.Notes.COLUMN_NAME_CATEGORY
         };
 
-        // The view IDs that will display the cursor columns, initialized to the TextViews in
-        // noteslist_item.xml
         int[] viewIDs = {
                 android.R.id.text1,
-                R.id.text2
+                R.id.text2,
+                R.id.category_label
         };
 
-        // Creates the backing adapter for the ListView.
-        SimpleCursorAdapter adapter
-                = new SimpleCursorAdapter(
-                this,                             // The Context for the ListView
-                R.layout.noteslist_item,          // Points to the XML for a list item
-                cursor,                           // The cursor to get items from
+        mAdapter = new SimpleCursorAdapter(
+                this,
+                R.layout.noteslist_item,
+                cursor,
                 dataColumns,
                 viewIDs
         );
 
-        // 设置ViewBinder来自定义时间戳的显示格式
-        adapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
+        mAdapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
+
             @Override
             public boolean setViewValue(View view, Cursor cursor, int columnIndex) {
+
                 if (columnIndex == COLUMN_INDEX_MODIFICATION_DATE) {
-                    // 处理时间戳显示
+
                     TextView textView = (TextView) view;
                     long timestamp = cursor.getLong(columnIndex);
                     String formattedTime = formatTimestamp(timestamp);
                     textView.setText(formattedTime);
+                    return true;
+
+                } else if (columnIndex == COLUMN_INDEX_CATEGORY) {
+
+                    TextView textView = (TextView) view;
+                    String category = cursor.getString(columnIndex);
+                    textView.setText(category);
+
+                    // 设置分类标签颜色
+                    Integer color = CATEGORY_COLORS.get(category);
+                    if (color != null) {
+                        textView.setTextColor(color);
+                    } else {
+                        textView.setTextColor(getResources().getColor(R.color.text_secondary));
+                    }
                     return true;
                 }
                 return false;
             }
         });
 
-        // Sets the ListView's adapter to be the cursor adapter that was just created.
-        setListAdapter(adapter);
+        // 设置列表适配器
+        setListAdapter(mAdapter);
     }
 
     /**
      * 格式化时间戳为易读的日期时间字符串
-     * @param timestamp 时间戳（毫秒）
-     * @return 格式化后的时间字符串
      */
     private String formatTimestamp(long timestamp) {
         if (timestamp == 0) {
@@ -191,30 +212,47 @@ public class NotesList extends ListActivity {
         return dateFormat.format(date) + " " + timeFormat.format(date);
     }
 
-
-    /**
-     * Called when the user clicks the device's Menu button the first time for
-     * this Activity. Android passes in a Menu object that is populated with items.
-     *
-     * Sets up a menu that provides the Insert option plus a list of alternative actions for
-     * this Activity. Other applications that want to handle notes can "register" themselves in
-     * Android by providing an intent filter that includes the category ALTERNATIVE and the
-     * mimeTYpe NotePad.Notes.CONTENT_TYPE. If they do this, the code in onCreateOptionsMenu()
-     * will add the Activity that contains the intent filter to its list of options. In effect,
-     * the menu will offer the user other applications that can handle notes.
-     * @param menu A Menu object, to which menu items should be added.
-     * @return True, always. The menu should be displayed.
-     */
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate menu from XML resource
+        // 加载菜单资源
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.list_options_menu, menu);
 
-        // Generate any additional actions that can be performed on the
-        // overall list.  In a normal install, there are no additional
-        // actions found here, but this allows other applications to extend
-        // our menu with their own actions.
+        // 设置搜索视图
+        MenuItem searchItem = menu.findItem(R.id.menu_search);
+        SearchView searchView = (SearchView) searchItem.getActionView();
+        if (searchView != null) {
+            searchView.setQueryHint("搜索笔记标题或内容...");
+            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    // 搜索提交时处理
+                    mCurrentSearchQuery = query;
+                    refreshNotesList();
+                    return true;
+                }
+
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    // 实时搜索
+                    mCurrentSearchQuery = newText;
+                    refreshNotesList();
+                    return true;
+                }
+            });
+
+            // 清除搜索时重置
+            searchView.setOnCloseListener(new SearchView.OnCloseListener() {
+                @Override
+                public boolean onClose() {
+                    mCurrentSearchQuery = null;
+                    refreshNotesList();
+                    return false;
+                }
+            });
+        }
+
+        // 生成其他可执行的操作
         Intent intent = new Intent(null, getIntent().getData());
         intent.addCategory(Intent.CATEGORY_ALTERNATIVE);
         menu.addIntentOptions(Menu.CATEGORY_ALTERNATIVE, 0, 0,
@@ -227,291 +265,712 @@ public class NotesList extends ListActivity {
     public boolean onPrepareOptionsMenu(Menu menu) {
         super.onPrepareOptionsMenu(menu);
 
-        // The paste menu item is enabled if there is data on the clipboard.
+        // 如果剪贴板中有数据，则启用粘贴菜单项
         ClipboardManager clipboard = (ClipboardManager)
                 getSystemService(Context.CLIPBOARD_SERVICE);
 
-
         MenuItem mPasteItem = menu.findItem(R.id.menu_paste);
 
-        // If the clipboard contains an item, enables the Paste option on the menu.
         if (clipboard.hasPrimaryClip()) {
             mPasteItem.setEnabled(true);
         } else {
-            // If the clipboard is empty, disables the menu's Paste option.
             mPasteItem.setEnabled(false);
         }
 
-        // Gets the number of notes currently being displayed.
+        // 更新筛选菜单项状态
+        MenuItem filterItem = menu.findItem(R.id.menu_filter);
+        if (mCurrentFilterCategory != null && !mCurrentFilterCategory.equals("所有分类")) {
+            filterItem.setTitle("取消筛选 (" + mCurrentFilterCategory + ")");
+        } else {
+            filterItem.setTitle("分类筛选");
+        }
+
+        // 获取当前显示的笔记数量
         final boolean haveItems = getListAdapter().getCount() > 0;
 
-        // If there are any notes in the list (which implies that one of
-        // them is selected), then we need to generate the actions that
-        // can be performed on the current selection.  This will be a combination
-        // of our own specific actions along with any extensions that can be
-        // found.
+        // 如果列表中有笔记，则生成替代操作
         if (haveItems) {
 
-            // This is the selected item.
+            // 获取选中项的URI
             Uri uri = ContentUris.withAppendedId(getIntent().getData(), getSelectedItemId());
 
-            // Creates an array of Intents with one element. This will be used to send an Intent
-            // based on the selected menu item.
+            // 创建Intent数组
             Intent[] specifics = new Intent[1];
 
-            // Sets the Intent in the array to be an EDIT action on the URI of the selected note.
+            // 设置Intent为编辑操作
             specifics[0] = new Intent(Intent.ACTION_EDIT, uri);
 
-            // Creates an array of menu items with one element. This will contain the EDIT option.
+            // 创建菜单项数组
             MenuItem[] items = new MenuItem[1];
 
-            // Creates an Intent with no specific action, using the URI of the selected note.
+            // 创建Intent
             Intent intent = new Intent(null, uri);
-
-            /* Adds the category ALTERNATIVE to the Intent, with the note ID URI as its
-             * data. This prepares the Intent as a place to group alternative options in the
-             * menu.
-             */
             intent.addCategory(Intent.CATEGORY_ALTERNATIVE);
 
-            /*
-             * Add alternatives to the menu
-             */
+            // 添加替代选项到菜单
             menu.addIntentOptions(
-                    Menu.CATEGORY_ALTERNATIVE,  // Add the Intents as options in the alternatives group.
-                    Menu.NONE,                  // A unique item ID is not required.
-                    Menu.NONE,                  // The alternatives don't need to be in order.
-                    null,                       // The caller's name is not excluded from the group.
-                    specifics,                  // These specific options must appear first.
-                    intent,                     // These Intent objects map to the options in specifics.
-                    Menu.NONE,                  // No flags are required.
-                    items                       // The menu items generated from the specifics-to-
-                    // Intents mapping
+                    Menu.CATEGORY_ALTERNATIVE,
+                    Menu.NONE,
+                    Menu.NONE,
+                    null,
+                    specifics,
+                    intent,
+                    Menu.NONE,
+                    items
             );
-            // If the Edit menu item exists, adds shortcuts for it.
+            
             if (items[0] != null) {
-
-                // Sets the Edit menu item shortcut to numeric "1", letter "e"
                 items[0].setShortcut('1', 'e');
             }
         } else {
-            // If the list is empty, removes any existing alternative actions from the menu
+            // 如果列表为空，移除所有替代操作
             menu.removeGroup(Menu.CATEGORY_ALTERNATIVE);
         }
 
-        // Displays the menu
         return true;
     }
 
-    /**
-     * This method is called when the user selects an option from the menu, but no item
-     * in the list is selected. If the option was INSERT, then a new Intent is sent out with action
-     * ACTION_INSERT. The data from the incoming Intent is put into the new Intent. In effect,
-     * this triggers the NoteEditor activity in the NotePad application.
-     *
-     * If the item was not INSERT, then most likely it was an alternative option from another
-     * application. The parent method is called to process the item.
-     * @param item The menu item that was selected by the user
-     * @return True, if the INSERT menu item was selected; otherwise, the result of calling
-     * the parent method.
-     */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.menu_add) {
-            /*
-             * Launches a new Activity using an Intent. The intent filter for the Activity
-             * has to have action ACTION_INSERT. No category is set, so DEFAULT is assumed.
-             * In effect, this starts the NoteEditor Activity in NotePad.
-             */
+        int id = item.getItemId();
+        if (id == R.id.menu_add) {
+            // 启动新的Activity创建笔记
             startActivity(new Intent(Intent.ACTION_INSERT, getIntent().getData()));
             return true;
-        } else if (item.getItemId() == R.id.menu_paste) {
-            /*
-             * Launches a new Activity using an Intent. The intent filter for the Activity
-             * has to have action ACTION_PASTE. No category is set, so DEFAULT is assumed.
-             * In effect, this starts the NoteEditor Activity in NotePad.
-             */
+        } else if (id == R.id.menu_paste) {
+            // 启动新的Activity粘贴笔记
             startActivity(new Intent(Intent.ACTION_PASTE, getIntent().getData()));
+            return true;
+        } else if (id == R.id.menu_categories) {
+            // 显示分类管理对话框
+            showCategoryManagementDialog();
+            return true;
+        } else if (id == R.id.menu_filter) {
+            // 显示分类筛选对话框
+            if (mCurrentFilterCategory != null && !mCurrentFilterCategory.equals("所有分类")) {
+                // 如果已经有筛选，点击则取消筛选
+                clearFilter();
+            } else {
+                showCategoryFilterDialog();
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
     /**
-     * This method is called when the user context-clicks a note in the list. NotesList registers
-     * itself as the handler for context menus in its ListView (this is done in onCreate()).
-     *
-     * The only available options are COPY and DELETE.
-     *
-     * Context-click is equivalent to long-press.
-     *
-     * @param menu A ContexMenu object to which items should be added.
-     * @param view The View for which the context menu is being constructed.
-     * @param menuInfo Data associated with view.
-     * @throws ClassCastException
+     * 显示分类筛选对话框
      */
+    private void showCategoryFilterDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("选择分类筛选");
+
+        // 加载分类列表
+        final List<String> categories = loadCategories();
+        categories.add(0, "所有分类"); // 添加"所有分类"选项
+
+        final String[] categoryArray = categories.toArray(new String[0]);
+
+        builder.setSingleChoiceItems(categoryArray,
+                categories.indexOf(mCurrentFilterCategory != null ? mCurrentFilterCategory : "所有分类"),
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String selectedCategory = categoryArray[which];
+                        if (selectedCategory.equals("所有分类")) {
+                            clearFilter();
+                        } else {
+                            applyFilter(selectedCategory);
+                        }
+                        dialog.dismiss();
+                    }
+                });
+
+        builder.setNegativeButton("取消", null);
+        builder.show();
+    }
+
+    /**
+     * 应用分类筛选
+     */
+    private void applyFilter(String category) {
+        mCurrentFilterCategory = category;
+        refreshNotesList();
+        Toast.makeText(this, "已筛选分类: " + category, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * 清除筛选
+     */
+    private void clearFilter() {
+        mCurrentFilterCategory = null;
+        mCurrentSearchQuery = null;
+        refreshNotesList();
+        Toast.makeText(this, "已清除筛选", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * 从数据库加载分类列表
+     */
+    private List<String> loadCategories() {
+        List<String> categories = new ArrayList<>();
+
+        Cursor cursor = getContentResolver().query(
+                NotePad.Categories.CONTENT_URI,
+                new String[] { NotePad.Categories.COLUMN_NAME_NAME },
+                null, null, NotePad.Categories.DEFAULT_SORT_ORDER
+        );
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                String categoryName = cursor.getString(0);
+                categories.add(categoryName);
+            }
+            cursor.close();
+        }
+
+        // 确保至少有一个默认分类
+        if (categories.isEmpty()) {
+            categories.add("默认分类");
+        }
+
+        return categories;
+    }
+
+    /**
+     * 显示分类管理对话框
+     */
+    private void showCategoryManagementDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.category_dialog, null);
+        builder.setView(dialogView);
+
+        // 初始化对话框组件
+        final EditText categoryNameInput = dialogView.findViewById(R.id.category_name_input);
+        Button addCategoryButton = dialogView.findViewById(R.id.add_category_button);
+        final ListView categoriesList = dialogView.findViewById(R.id.categories_list);
+        Button cancelButton = dialogView.findViewById(R.id.cancel_button);
+        Button confirmButton = dialogView.findViewById(R.id.confirm_button);
+
+        // 加载分类列表
+        final CategoryAdapter categoryAdapter = new CategoryAdapter();
+        categoriesList.setAdapter(categoryAdapter);
+
+        // 添加分类按钮点击事件
+        addCategoryButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String categoryName = categoryNameInput.getText().toString().trim();
+                if (!TextUtils.isEmpty(categoryName)) {
+                    addCategory(categoryName);
+                    categoryNameInput.setText("");
+                    categoryAdapter.refreshData();
+                } else {
+                    Toast.makeText(NotesList.this, "请输入分类名称", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        final AlertDialog dialog = builder.create();
+
+        // 设置取消按钮关闭对话框
+        cancelButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+
+        // 设置确定按钮关闭对话框并刷新列表
+        confirmButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                refreshNotesList();
+                dialog.dismiss();
+            }
+        });
+
+        dialog.show();
+    }
+
+    /**
+     * 添加新分类
+     */
+    private void addCategory(String categoryName) {
+        ContentValues values = new ContentValues();
+        values.put(NotePad.Categories.COLUMN_NAME_NAME, categoryName);
+        values.put(NotePad.Categories.COLUMN_NAME_COLOR, 0xFF2196F3); // 默认蓝色
+
+        try {
+            getContentResolver().insert(NotePad.Categories.CONTENT_URI, values);
+            CATEGORY_COLORS.put(categoryName, 0xFF2196F3); // 添加到颜色映射
+            Toast.makeText(this, "分类添加成功", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "分类添加失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Failed to add category", e);
+        }
+    }
+
+    /**
+     * 编辑分类
+     */
+    private void editCategory(final String oldName, final int categoryId) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.edit_category_dialog, null);
+        builder.setView(dialogView);
+
+        final EditText categoryNameEdit = dialogView.findViewById(R.id.edit_category_name);
+        final LinearLayout colorPalette = dialogView.findViewById(R.id.color_palette);
+        Button cancelButton = dialogView.findViewById(R.id.edit_cancel_button);
+        Button saveButton = dialogView.findViewById(R.id.edit_save_button);
+
+        categoryNameEdit.setText(oldName);
+
+        // 创建颜色选择器
+        createColorPalette(colorPalette, CATEGORY_COLORS.get(oldName));
+
+        final AlertDialog dialog = builder.create();
+
+        saveButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String newName = categoryNameEdit.getText().toString().trim();
+                if (!TextUtils.isEmpty(newName)) {
+                    updateCategory(categoryId, oldName, newName, selectedColor);
+                    dialog.dismiss();
+                } else {
+                    Toast.makeText(NotesList.this, "分类名称不能为空", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        cancelButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+
+        dialog.show();
+    }
+
+    /**
+     * 创建颜色选择面板
+     */
+    private void createColorPalette(LinearLayout palette, int currentColor) {
+        selectedColor = currentColor;
+        palette.removeAllViews();
+
+        for (final int color : COLOR_OPTIONS) {
+            // 创建外层容器
+            LinearLayout colorContainer = new LinearLayout(this);
+            int size = getResources().getDimensionPixelSize(R.dimen.color_button_size);
+            LinearLayout.LayoutParams containerParams = new LinearLayout.LayoutParams(size, size);
+            containerParams.setMargins(4, 4, 4, 4);
+            colorContainer.setLayoutParams(containerParams);
+            colorContainer.setOrientation(LinearLayout.VERTICAL);
+            colorContainer.setGravity(android.view.Gravity.CENTER);
+
+            // 创建颜色视图
+            View colorView = new View(this);
+            int innerSize = getResources().getDimensionPixelSize(R.dimen.color_inner_size);
+            LinearLayout.LayoutParams colorParams = new LinearLayout.LayoutParams(innerSize, innerSize);
+            colorView.setLayoutParams(colorParams);
+            colorView.setBackgroundColor(color);
+            colorView.setTag(color);
+
+            // 为当前选中的颜色添加边框
+            if (color == currentColor) {
+                colorContainer.setBackgroundResource(R.drawable.color_selected_border);
+            } else {
+                colorContainer.setBackgroundColor(Color.TRANSPARENT);
+            }
+
+            colorContainer.addView(colorView);
+            colorContainer.setTag(color);
+
+            colorContainer.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    selectedColor = color;
+                    // 更新所有颜色视图的选中状态
+                    for (int i = 0; i < palette.getChildCount(); i++) {
+                        View child = palette.getChildAt(i);
+                        int childColor = (Integer) child.getTag();
+                        if (childColor == color) {
+                            child.setBackgroundResource(R.drawable.color_selected_border);
+                        } else {
+                            child.setBackgroundColor(Color.TRANSPARENT);
+                        }
+                    }
+                }
+            });
+
+            palette.addView(colorContainer);
+        }
+    }
+
+    /**
+     * 更新分类
+     */
+    private void updateCategory(int categoryId, String oldName, String newName, int color) {
+        ContentValues values = new ContentValues();
+        values.put(NotePad.Categories.COLUMN_NAME_NAME, newName);
+        values.put(NotePad.Categories.COLUMN_NAME_COLOR, color);
+
+        Uri categoryUri = ContentUris.withAppendedId(NotePad.Categories.CONTENT_URI, categoryId);
+
+        try {
+            getContentResolver().update(categoryUri, values, null, null);
+
+            // 更新颜色映射
+            CATEGORY_COLORS.remove(oldName);
+            CATEGORY_COLORS.put(newName, color);
+
+            // 更新所有使用该分类的笔记
+            updateNotesCategory(oldName, newName);
+
+            Toast.makeText(this, "分类更新成功", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "分类更新失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Failed to update category", e);
+        }
+    }
+
+    /**
+     * 更新笔记的分类
+     */
+    private void updateNotesCategory(String oldCategory, String newCategory) {
+        ContentValues values = new ContentValues();
+        values.put(NotePad.Notes.COLUMN_NAME_CATEGORY, newCategory);
+
+        getContentResolver().update(
+                NotePad.Notes.CONTENT_URI,
+                values,
+                NotePad.Notes.COLUMN_NAME_CATEGORY + " = ?",
+                new String[] { oldCategory }
+        );
+    }
+
+    /**
+     * 删除分类
+     */
+    private void deleteCategory(final int categoryId, final String categoryName) {
+        new AlertDialog.Builder(this)
+                .setTitle("确认删除")
+                .setMessage("确定要删除分类 \"" + categoryName + "\" 吗？所有属于该分类的笔记将被移动到\"默认分类\"。")
+                .setPositiveButton("删除", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // 先将该分类下的笔记移动到默认分类
+                        updateNotesCategory(categoryName, "默认分类");
+
+                        // 然后删除分类
+                        Uri categoryUri = ContentUris.withAppendedId(NotePad.Categories.CONTENT_URI, categoryId);
+                        getContentResolver().delete(categoryUri, null, null);
+
+                        // 从颜色映射中移除
+                        CATEGORY_COLORS.remove(categoryName);
+
+                        Toast.makeText(NotesList.this, "分类已删除", Toast.LENGTH_SHORT).show();
+                        refreshNotesList();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /**
+     * 刷新笔记列表
+     */
+    private void refreshNotesList() {
+        // 构建查询条件
+        String selection = null;
+        String[] selectionArgs = null;
+
+        // 处理分类筛选
+        if (mCurrentFilterCategory != null && !mCurrentFilterCategory.equals("所有分类")) {
+            selection = NotePad.Notes.COLUMN_NAME_CATEGORY + " = ?";
+            selectionArgs = new String[] { mCurrentFilterCategory };
+        }
+
+        // 处理搜索查询
+        if (mCurrentSearchQuery != null && !mCurrentSearchQuery.isEmpty()) {
+            if (selection == null) {
+                selection = NotePad.Notes.COLUMN_NAME_TITLE + " LIKE ? OR " +
+                        NotePad.Notes.COLUMN_NAME_NOTE + " LIKE ?";
+                selectionArgs = new String[] {
+                        "%" + mCurrentSearchQuery + "%",
+                        "%" + mCurrentSearchQuery + "%"
+                };
+            } else {
+                selection += " AND (" + NotePad.Notes.COLUMN_NAME_TITLE + " LIKE ? OR " +
+                        NotePad.Notes.COLUMN_NAME_NOTE + " LIKE ?)";
+                selectionArgs = new String[] {
+                        mCurrentFilterCategory,
+                        "%" + mCurrentSearchQuery + "%",
+                        "%" + mCurrentSearchQuery + "%"
+                };
+            }
+        }
+
+        // 执行查询
+        Cursor newCursor = managedQuery(
+                getIntent().getData(),
+                PROJECTION,
+                selection,
+                selectionArgs,
+                NotePad.Notes.DEFAULT_SORT_ORDER
+        );
+
+        // 更新适配器的游标
+        if (mAdapter != null) {
+            mAdapter.changeCursor(newCursor);
+        }
+
+        // 更新界面状态
+        updateUIState();
+    }
+
+    /**
+     * 更新界面状态显示
+     */
+    private void updateUIState() {
+        // 更新标题显示筛选状态
+        if (mCurrentFilterCategory != null && !mCurrentFilterCategory.equals("所有分类")) {
+            setTitle("笔记 - " + mCurrentFilterCategory);
+        } else {
+            setTitle("笔记列表");
+        }
+
+        // 显示空列表提示 - 修复类型转换问题
+        View emptyView = getListView().getEmptyView();
+        if (emptyView instanceof TextView) {
+            TextView emptyTextView = (TextView) emptyView;
+            if (mAdapter != null && mAdapter.isEmpty()) {
+                if (mCurrentFilterCategory != null && !mCurrentFilterCategory.equals("所有分类")) {
+                    emptyTextView.setText("该分类下没有笔记");
+                } else if (mCurrentSearchQuery != null && !mCurrentSearchQuery.isEmpty()) {
+                    emptyTextView.setText("没有找到匹配的笔记");
+                } else {
+                    emptyTextView.setText("还没有笔记，点击菜单按钮创建新笔记");
+                }
+            }
+        }
+    }
+
+    /**
+     * 分类列表适配器
+     */
+    private class CategoryAdapter extends BaseAdapter {
+        private List<Category> categories = new ArrayList<>();
+
+        public CategoryAdapter() {
+            refreshData();
+        }
+
+        public void refreshData() {
+            categories.clear();
+            Cursor cursor = getContentResolver().query(
+                    NotePad.Categories.CONTENT_URI,
+                    new String[] {
+                            NotePad.Categories._ID,
+                            NotePad.Categories.COLUMN_NAME_NAME,
+                            NotePad.Categories.COLUMN_NAME_COLOR
+                    },
+                    null, null, NotePad.Categories.DEFAULT_SORT_ORDER
+            );
+
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    Category category = new Category();
+                    category.id = cursor.getInt(0);
+                    category.name = cursor.getString(1);
+                    category.color = cursor.getInt(2);
+                    categories.add(category);
+
+                    // 更新颜色映射
+                    CATEGORY_COLORS.put(category.name, category.color);
+                }
+                cursor.close();
+            }
+            notifyDataSetChanged();
+        }
+
+        @Override
+        public int getCount() {
+            return categories.size();
+        }
+
+        @Override
+        public Category getItem(int position) {
+            return categories.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return categories.get(position).id;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            ViewHolder holder;
+            if (convertView == null) {
+                convertView = getLayoutInflater().inflate(R.layout.category_item, parent, false);
+                holder = new ViewHolder();
+                holder.colorView = convertView.findViewById(R.id.category_color);
+                holder.nameView = convertView.findViewById(R.id.category_name);
+                holder.editButton = convertView.findViewById(R.id.edit_button);
+                holder.deleteButton = convertView.findViewById(R.id.delete_button);
+                convertView.setTag(holder);
+            } else {
+                holder = (ViewHolder) convertView.getTag();
+            }
+
+            final Category category = getItem(position);
+            holder.nameView.setText(category.name);
+            holder.colorView.setBackgroundColor(category.color);
+
+            // 编辑按钮点击事件
+            holder.editButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    editCategory(category.name, category.id);
+                }
+            });
+
+            // 删除按钮点击事件
+            holder.deleteButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    deleteCategory(category.id, category.name);
+                }
+            });
+
+            return convertView;
+        }
+
+        class ViewHolder {
+            View colorView;
+            TextView nameView;
+            ImageButton editButton;
+            ImageButton deleteButton;
+        }
+    }
+
+    /**
+     * 分类数据模型
+     */
+    private static class Category {
+        int id;
+        String name;
+        int color;
+    }
+
     @Override
     public void onCreateContextMenu(ContextMenu menu, View view, ContextMenuInfo menuInfo) {
 
-        // The data from the menu item.
+        // 尝试获取长按项在ListView中的位置
         AdapterView.AdapterContextMenuInfo info;
-
-        // Tries to get the position of the item in the ListView that was long-pressed.
         try {
-            // Casts the incoming data object into the type for AdapterView objects.
             info = (AdapterView.AdapterContextMenuInfo) menuInfo;
         } catch (ClassCastException e) {
-            // If the menu object can't be cast, logs an error.
             Log.e(TAG, "bad menuInfo", e);
             return;
         }
 
-        /*
-         * Gets the data associated with the item at the selected position. getItem() returns
-         * whatever the backing adapter of the ListView has associated with the item. In NotesList,
-         * the adapter associated all of the data for a note with its list item. As a result,
-         * getItem() returns that data as a Cursor.
-         */
+        // 获取选中项的数据
         Cursor cursor = (Cursor) getListAdapter().getItem(info.position);
 
-        // If the cursor is empty, then for some reason the adapter can't get the data from the
-        // provider, so returns null to the caller.
         if (cursor == null) {
-            // For some reason the requested item isn't available, do nothing
             return;
         }
 
-        // Inflate menu from XML resource
+        // 加载上下文菜单资源
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.list_context_menu, menu);
 
-        // Sets the menu header to be the title of the selected note.
+        // 设置菜单标题为选中笔记的标题
         menu.setHeaderTitle(cursor.getString(COLUMN_INDEX_TITLE));
 
-        // Append to the
-        // menu items for any other activities that can do stuff with it
-        // as well.  This does a query on the system for any activities that
-        // implement the ALTERNATIVE_ACTION for our data, adding a menu item
-        // for each one that is found.
+        // 添加其他Activity可以处理的操作
         Intent intent = new Intent(null, Uri.withAppendedPath(getIntent().getData(),
-                Integer.toString((int) info.id) ));
+                Integer.toString((int) info.id)));
         intent.addCategory(Intent.CATEGORY_ALTERNATIVE);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         menu.addIntentOptions(Menu.CATEGORY_ALTERNATIVE, 0, 0,
                 new ComponentName(this, NotesList.class), null, intent, 0, null);
     }
 
-    /**
-     * This method is called when the user selects an item from the context menu
-     * (see onCreateContextMenu()). The only menu items that are actually handled are DELETE and
-     * COPY. Anything else is an alternative option, for which default handling should be done.
-     *
-     * @param item The selected menu item
-     * @return True if the menu item was DELETE, and no default processing is need, otherwise false,
-     * which triggers the default handling of the item.
-     * @throws ClassCastException
-     */
     @Override
     public boolean onContextItemSelected(MenuItem item) {
-        // The data from the menu item.
+        // 获取菜单项的额外信息
         AdapterView.AdapterContextMenuInfo info;
 
-        /*
-         * Gets the extra info from the menu item. When an note in the Notes list is long-pressed, a
-         * context menu appears. The menu items for the menu automatically get the data
-         * associated with the note that was long-pressed. The data comes from the provider that
-         * backs the list.
-         *
-         * The note's data is passed to the context menu creation routine in a ContextMenuInfo
-         * object.
-         *
-         * When one of the context menu items is clicked, the same data is passed, along with the
-         * note ID, to onContextItemSelected() via the item parameter.
-         */
         try {
-            // Casts the data object in the item into the type for AdapterView objects.
             info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
         } catch (ClassCastException e) {
-
-            // If the object can't be cast, logs an error
             Log.e(TAG, "bad menuInfo", e);
-
-            // Triggers default processing of the menu item.
             return false;
         }
-        // Appends the selected note's ID to the URI sent with the incoming Intent.
+
+        // 构建选中笔记的URI
         Uri noteUri = ContentUris.withAppendedId(getIntent().getData(), info.id);
 
-        /*
-         * Gets the menu item's ID and compares it to known actions.
-         */
+        // 获取菜单项的ID并比较
         int id = item.getItemId();
         if (id == R.id.context_open) {
-            // Launch activity to view/edit the currently selected item
+            // 打开笔记进行查看/编辑
             startActivity(new Intent(Intent.ACTION_EDIT, noteUri));
             return true;
-        } else if (id == R.id.context_copy) { //BEGIN_INCLUDE(copy)
-            // Gets a handle to the clipboard service.
+        } else if (id == R.id.context_copy) {
+            // 复制笔记URI到剪贴板
             ClipboardManager clipboard = (ClipboardManager)
                     getSystemService(Context.CLIPBOARD_SERVICE);
-
-            // Copies the notes URI to the clipboard. In effect, this copies the note itself
-            clipboard.setPrimaryClip(ClipData.newUri(   // new clipboard item holding a URI
-                    getContentResolver(),               // resolver to retrieve URI info
-                    "Note",                             // label for the clip
-                    noteUri));                          // the URI
-
-            // Returns to the caller and skips further processing.
+            clipboard.setPrimaryClip(ClipData.newUri(
+                    getContentResolver(),
+                    "Note",
+                    noteUri));
             return true;
-            //END_INCLUDE(copy)
         } else if (id == R.id.context_delete) {
-            // Deletes the note from the provider by passing in a URI in note ID format.
-            // Please see the introductory note about performing provider operations on the
-            // UI thread.
+            // 从提供者中删除笔记
             getContentResolver().delete(
-                    noteUri,  // The URI of the provider
-                    null,     // No where clause is needed, since only a single note ID is being
-                    // passed in.
-                    null      // No where clause is used, so no where arguments are needed.
+                    noteUri,
+                    null,
+                    null
             );
-
-            // Returns to the caller and skips further processing.
             return true;
         }
         return super.onContextItemSelected(item);
     }
 
-    /**
-     * This method is called when the user clicks a note in the displayed list.
-     *
-     * This method handles incoming actions of either PICK (get data from the provider) or
-     * GET_CONTENT (get or create data). If the incoming action is EDIT, this method sends a
-     * new Intent to start NoteEditor.
-     * @param l The ListView that contains the clicked item
-     * @param v The View of the individual item
-     * @param position The position of v in the displayed list
-     * @param id The row ID of the clicked item
-     */
     @Override
     protected void onListItemClick(ListView l, View v, int position, long id) {
 
-        // Constructs a new URI from the incoming URI and the row ID
+        // 构建新的URI
         Uri uri = ContentUris.withAppendedId(getIntent().getData(), id);
 
-        // Gets the action from the incoming Intent
+        // 获取传入的操作
         String action = getIntent().getAction();
 
-        // Handles requests for note data
+        // 处理数据请求
         if (Intent.ACTION_PICK.equals(action) || Intent.ACTION_GET_CONTENT.equals(action)) {
-
-            // Sets the result to return to the component that called this Activity. The
-            // result contains the new URI
             setResult(RESULT_OK, new Intent().setData(uri));
         } else {
-
-            // Sends out an Intent to start an Activity that can handle ACTION_EDIT. The
-            // Intent's data is the note ID URI. The effect is to call NoteEdit.
+            // 启动编辑Activity
             startActivity(new Intent(Intent.ACTION_EDIT, uri));
         }
+    }
+
+    /**
+     * 当从其他Activity返回时刷新列表
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 刷新列表以显示可能的更改
+        refreshNotesList();
     }
 }
