@@ -70,12 +70,29 @@
             android:paddingTop="@dimen/text_spacing"
             android:fontFamily="sans-serif"/>
 
+        <!-- 搜索状态指示器（新增） -->
+        <TextView
+            android:id="@+id/search_match_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔍 匹配"
+            android:textSize="10sp"
+            android:visibility="gone"
+            android:background="@drawable/search_indicator_background"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/white"
+            android:singleLine="true"/>
+
         <!-- 分类筛选标签（可选显示） -->
         <TextView
             android:id="@+id/filter_indicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🔍"
+            android:text="🏷️"
             android:textSize="12sp"
             android:visibility="gone"
             android:paddingStart="4dp"

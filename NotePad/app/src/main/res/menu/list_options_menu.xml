@@ -2,34 +2,32 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <!--  This is our one standard application action (creating a new note). -->
+    <!-- 创建新笔记 -->
     <item android:id="@+id/menu_add"
         android:icon="@drawable/ic_menu_compose"
         android:title="@string/menu_add"
         android:alphabeticShortcut='a'
         app:showAsAction="always" />
 
-    <!-- 分类管理菜单项 -->
+    <!-- 分类管理 -->
     <item android:id="@+id/menu_categories"
         android:icon="@drawable/ic_menu_manage"
         android:title="分类管理"
         app:showAsAction="ifRoom" />
 
-    <!-- 分类筛选菜单项 -->
+    <!-- 分类筛选 -->
     <item android:id="@+id/menu_filter"
         android:icon="@drawable/ic_menu_filter"
         android:title="分类筛选"
         app:showAsAction="ifRoom" />
 
-    <!-- 搜索菜单项 -->
+    <!-- 搜索菜单项 - 改为普通菜单项 -->
     <item android:id="@+id/menu_search"
         android:icon="@android:drawable/ic_menu_search"
         android:title="搜索"
-        app:showAsAction="ifRoom|collapseActionView"
-        app:actionViewClass="androidx.appcompat.widget.SearchView" />
+        app:showAsAction="ifRoom" />
 
-    <!--  If there is currently data in the clipboard, this adds a PASTE menu item to the menu
-          so that the user can paste in the data.. -->
+    <!-- 粘贴 -->
     <item android:id="@+id/menu_paste"
         android:icon="@drawable/ic_menu_compose"
         android:title="@string/menu_paste"

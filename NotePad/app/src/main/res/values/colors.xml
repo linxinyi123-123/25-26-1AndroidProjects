@@ -9,7 +9,8 @@
     <color name="divider">#E0E0E0</color>
     <color name="item_pressed">#F5F5F5</color>
     <color name="background_selected">#E3F2FD</color>
-
+    <color name="search_indicator_color">#FF6D00</color>
+    <color name="white">#FFFFFF</color>
     <!-- 新增主色调 -->
     <color name="colorPrimary">#2196F3</color>
     <color name="colorPrimaryDark">#1976D2</color>

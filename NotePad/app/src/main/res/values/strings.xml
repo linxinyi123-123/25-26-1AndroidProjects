@@ -41,7 +41,13 @@
     <string name="error_message">Error loading note</string>
     <string name="nothing_to_save">There is nothing to save</string>
 
-
+    <!-- 搜索相关字符串 -->
+    <string name="search_hint">搜索笔记标题或内容...</string>
+    <string name="no_search_results">没有找到匹配的笔记</string>
+    <string name="search_in_category">在分类 \"%1$s\" 中搜索: %2$s</string>
+    <string name="search_results_for">搜索: \"%s\"</string>
+    <string name="search_match">匹配</string>
+    <string name="clear_search">清除搜索</string>
     <!-- 新增分类相关字符串 -->
     <string name="category_label">分类</string>
     <string name="category_manage">分类管理</string>
@@ -49,10 +55,8 @@
     <string name="all_categories">所有分类</string>
     <string name="filter_by_category">按分类筛选</string>
     <string name="clear_filter">取消筛选</string>
-    <string name="search_hint">搜索笔记标题或内容...</string>
     <string name="no_notes_in_category">该分类下没有笔记</string>
-    <string name="no_search_results">没有找到匹配的笔记</string>
-    <string name="no_notes_yet">还没有笔记，点击右下角按钮创建新笔记</string>
+    <string name="no_notes">还没有笔记，点击右下角按钮创建新笔记</string>
 
     <!-- 便签小部件相关 -->
     <string name="menu_create_widget">创建便签</string>
