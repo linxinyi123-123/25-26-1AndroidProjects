@@ -63,7 +63,7 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
     /**
      * The database version - updated for category support
      */
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 4;
 
     /**
      * A projection map used to select columns from the database
@@ -120,6 +120,13 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
     // Handle to a new DatabaseHelper.
     private DatabaseHelper mOpenHelper;
 
+    // 搜索历史表的URI匹配模式
+    private static final int SEARCH_HISTORY = 6;
+    private static final int SEARCH_HISTORY_ID = 7;
+
+    // 添加搜索历史表相关的常量
+    private static HashMap<String, String> sSearchHistoryProjectionMap;
+
     // Default categories to initialize the database with
     private static final String[] DEFAULT_CATEGORIES = {
             "默认分类", "工作", "学习", "生活", "想法", "购物清单"
@@ -160,6 +167,10 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
         // Add patterns for categories
         sUriMatcher.addURI(NotePad.AUTHORITY, "categories", CATEGORIES);
         sUriMatcher.addURI(NotePad.AUTHORITY, "categories/#", CATEGORY_ID);
+
+        // 添加搜索历史的URI模式
+        sUriMatcher.addURI(NotePad.AUTHORITY, "search_history", SEARCH_HISTORY);
+        sUriMatcher.addURI(NotePad.AUTHORITY, "search_history/#", SEARCH_HISTORY_ID);
 
         /*
          * Creates and initializes a projection map that returns all columns
@@ -217,6 +228,19 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
                 NotePad.Categories.COLUMN_NAME_COLOR);
         sCategoriesProjectionMap.put(NotePad.Categories.COLUMN_NAME_CREATE_DATE,
                 NotePad.Categories.COLUMN_NAME_CREATE_DATE);
+
+        /*
+         * Creates and initializes a projection map for search history
+         */
+        sSearchHistoryProjectionMap = new HashMap<String, String>();
+
+        sSearchHistoryProjectionMap.put(NotePad.SearchHistory._ID, NotePad.SearchHistory._ID);
+        sSearchHistoryProjectionMap.put(NotePad.SearchHistory.COLUMN_NAME_QUERY,
+                NotePad.SearchHistory.COLUMN_NAME_QUERY);
+        sSearchHistoryProjectionMap.put(NotePad.SearchHistory.COLUMN_NAME_TIMESTAMP,
+                NotePad.SearchHistory.COLUMN_NAME_TIMESTAMP);
+        sSearchHistoryProjectionMap.put(NotePad.SearchHistory.COLUMN_NAME_RESULT_COUNT,
+                NotePad.SearchHistory.COLUMN_NAME_RESULT_COUNT);
     }
 
     /**
@@ -253,6 +277,14 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
                     + NotePad.Categories.COLUMN_NAME_NAME + " TEXT UNIQUE,"
                     + NotePad.Categories.COLUMN_NAME_COLOR + " INTEGER,"
                     + NotePad.Categories.COLUMN_NAME_CREATE_DATE + " INTEGER"
+                    + ");");
+
+            // 创建搜索历史表
+            db.execSQL("CREATE TABLE " + NotePad.SearchHistory.TABLE_NAME + " ("
+                    + NotePad.SearchHistory._ID + " INTEGER PRIMARY KEY,"
+                    + NotePad.SearchHistory.COLUMN_NAME_QUERY + " TEXT UNIQUE,"
+                    + NotePad.SearchHistory.COLUMN_NAME_TIMESTAMP + " INTEGER,"
+                    + NotePad.SearchHistory.COLUMN_NAME_RESULT_COUNT + " INTEGER DEFAULT 0"
                     + ");");
 
             // Insert default categories
@@ -302,6 +334,16 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
 
                 // Insert default categories
                 insertDefaultCategories(db);
+            }
+
+            if (oldVersion < 4) {
+                // 版本4：添加搜索历史表
+                db.execSQL("CREATE TABLE " + NotePad.SearchHistory.TABLE_NAME + " ("
+                        + NotePad.SearchHistory._ID + " INTEGER PRIMARY KEY,"
+                        + NotePad.SearchHistory.COLUMN_NAME_QUERY + " TEXT UNIQUE,"
+                        + NotePad.SearchHistory.COLUMN_NAME_TIMESTAMP + " INTEGER,"
+                        + NotePad.SearchHistory.COLUMN_NAME_RESULT_COUNT + " INTEGER DEFAULT 0"
+                        + ");");
             }
         }
     }
@@ -383,6 +425,20 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
                                 uri.getPathSegments().get(1));
                 break;
 
+            case SEARCH_HISTORY:
+                qb.setTables(NotePad.SearchHistory.TABLE_NAME);
+                qb.setProjectionMap(sSearchHistoryProjectionMap);
+                break;
+
+            case SEARCH_HISTORY_ID:
+                qb.setTables(NotePad.SearchHistory.TABLE_NAME);
+                qb.setProjectionMap(sSearchHistoryProjectionMap);
+                qb.appendWhere(
+                        NotePad.SearchHistory._ID +
+                                "=" +
+                                uri.getPathSegments().get(1));
+                break;
+
             default:
                 // If the URI doesn't match any of the known patterns, throw an exception.
                 throw new IllegalArgumentException("Unknown URI " + uri);
@@ -401,6 +457,10 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
                 case CATEGORIES:
                 case CATEGORY_ID:
                     orderBy = NotePad.Categories.DEFAULT_SORT_ORDER;
+                    break;
+                case SEARCH_HISTORY:
+                case SEARCH_HISTORY_ID:
+                    orderBy = NotePad.SearchHistory.DEFAULT_SORT_ORDER;
                     break;
                 default:
                     orderBy = null;
@@ -465,6 +525,14 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
             // If the pattern is for category IDs, returns the category ID content type.
             case CATEGORY_ID:
                 return NotePad.Categories.CONTENT_ITEM_TYPE;
+
+            // If the pattern is for search history, returns the search history content type.
+            case SEARCH_HISTORY:
+                return NotePad.SearchHistory.CONTENT_TYPE;
+
+// If the pattern is for search history IDs, returns the search history ID content type.
+            case SEARCH_HISTORY_ID:
+                return NotePad.SearchHistory.CONTENT_ITEM_TYPE;
 
             // If the URI pattern doesn't match any permitted patterns, throws an exception.
             default:
@@ -626,6 +694,9 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
             case CATEGORIES:
                 // Handle category insertion
                 return insertCategory(uri, initialValues);
+            case SEARCH_HISTORY:
+                // Handle search history insertion
+                return insertSearchHistory(uri, initialValues);
             default:
                 throw new IllegalArgumentException("Unknown URI " + uri);
         }
@@ -743,6 +814,42 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
     }
 
     /**
+     * Insert a new search history entry
+     */
+    private Uri insertSearchHistory(Uri uri, ContentValues initialValues) {
+        ContentValues values;
+
+        if (initialValues != null) {
+            values = new ContentValues(initialValues);
+        } else {
+            values = new ContentValues();
+        }
+
+        Long now = Long.valueOf(System.currentTimeMillis());
+
+        // Always update timestamp
+        values.put(NotePad.SearchHistory.COLUMN_NAME_TIMESTAMP, now);
+
+        SQLiteDatabase db = mOpenHelper.getWritableDatabase();
+
+        // 使用 INSERT OR REPLACE 策略，因为查询是唯一的
+        long rowId = db.insertWithOnConflict(
+                NotePad.SearchHistory.TABLE_NAME,
+                null,
+                values,
+                SQLiteDatabase.CONFLICT_REPLACE
+        );
+
+        if (rowId > 0) {
+            Uri historyUri = ContentUris.withAppendedId(NotePad.SearchHistory.CONTENT_URI, rowId);
+            getContext().getContentResolver().notifyChange(historyUri, null);
+            return historyUri;
+        }
+
+        throw new SQLException("Failed to insert row into " + uri);
+    }
+
+    /**
      * This is called when a client calls
      * {@link android.content.ContentResolver#delete(Uri, String, String[])}.
      * Deletes records from the database. If the incoming URI matches the note ID URI pattern,
@@ -827,6 +934,32 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
 
                 count = db.delete(
                         NotePad.Categories.TABLE_NAME,
+                        finalWhere,
+                        whereArgs
+                );
+                break;
+
+            // Handle search history deletion
+            case SEARCH_HISTORY:
+                count = db.delete(
+                        NotePad.SearchHistory.TABLE_NAME,
+                        where,
+                        whereArgs
+                );
+                break;
+
+            case SEARCH_HISTORY_ID:
+                finalWhere =
+                        NotePad.SearchHistory._ID +
+                                " = " +
+                                uri.getPathSegments().get(1);
+
+                if (where != null) {
+                    finalWhere = finalWhere + " AND " + where;
+                }
+
+                count = db.delete(
+                        NotePad.SearchHistory.TABLE_NAME,
                         finalWhere,
                         whereArgs
                 );
@@ -949,6 +1082,35 @@ public class NotePadProvider extends ContentProvider implements PipeDataWriter<C
 
                 count = db.update(
                         NotePad.Categories.TABLE_NAME,
+                        values,
+                        finalWhere,
+                        whereArgs
+                );
+                break;
+
+            // Handle search history updates
+            case SEARCH_HISTORY:
+                count = db.update(
+                        NotePad.SearchHistory.TABLE_NAME,
+                        values,
+                        where,
+                        whereArgs
+                );
+                break;
+
+            case SEARCH_HISTORY_ID:
+                String historyId = uri.getPathSegments().get(1);
+                finalWhere =
+                        NotePad.SearchHistory._ID +
+                                " = " +
+                                historyId;
+
+                if (where != null) {
+                    finalWhere = finalWhere + " AND " + where;
+                }
+
+                count = db.update(
+                        NotePad.SearchHistory.TABLE_NAME,
                         values,
                         finalWhere,
                         whereArgs

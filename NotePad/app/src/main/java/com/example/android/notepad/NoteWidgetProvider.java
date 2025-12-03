@@ -46,7 +46,6 @@ public class NoteWidgetProvider extends AppWidgetProvider {
         }
     }
 
-
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         Log.d(TAG, "updateAppWidget 被调用, ID: " + appWidgetId);
 
@@ -74,95 +73,61 @@ public class NoteWidgetProvider extends AppWidgetProvider {
                 views.setOnClickPendingIntent(R.id.widget_root, configPendingIntent);
 
             } else {
-                Log.d(TAG, "开始查询笔记数据，笔记ID: " + noteId);
-
-                // 先进行调试检查
-                debugCheckNoteData(context, noteId);
-
-                // 使用安全的查询方式
+                // 查询笔记数据
+                Uri noteUri = ContentUris.withAppendedId(NotePad.Notes.CONTENT_URI, noteId);
                 Cursor cursor = null;
+
                 try {
-                    // 方法1：使用带条件的查询（更安全）
                     cursor = context.getContentResolver().query(
-                            NotePad.Notes.CONTENT_URI,
+                            noteUri,
                             new String[] {
-                                    NotePad.Notes._ID,
                                     NotePad.Notes.COLUMN_NAME_TITLE,
                                     NotePad.Notes.COLUMN_NAME_NOTE,
                                     NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE,
                                     NotePad.Notes.COLUMN_NAME_CATEGORY
                             },
-                            NotePad.Notes._ID + " = ?",  // WHERE 条件
-                            new String[] { String.valueOf(noteId) },  // 参数
-                            null
+                            null, null, null
                     );
 
                     if (cursor != null && cursor.moveToFirst()) {
-                        Log.d(TAG, "查询成功，找到笔记数据");
+                        // 获取笔记数据
+                        String title = cursor.getString(0);
+                        String content = cursor.getString(1);
+                        long modificationDate = cursor.getLong(2);
+                        String category = cursor.getString(3);
 
-                        // 安全地获取列索引
-                        int titleIndex = cursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_TITLE);
-                        int noteIndex = cursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_NOTE);
-                        int dateIndex = cursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE);
-                        int categoryIndex = cursor.getColumnIndex(NotePad.Notes.COLUMN_NAME_CATEGORY);
-
-                        // 检查列索引是否有效
-                        if (titleIndex >= 0 && noteIndex >= 0 && dateIndex >= 0 && categoryIndex >= 0) {
-                            String title = cursor.getString(titleIndex);
-                            String content = cursor.getString(noteIndex);
-                            long modificationDate = cursor.getLong(dateIndex);
-                            String category = cursor.getString(categoryIndex);
-
-                            Log.d(TAG, "成功读取笔记数据 - 标题: " + title + ", 分类: " + category);
-
-                            // 处理可能为null的值
-                            if (title == null) title = "无标题";
-                            if (content == null) content = "";
-                            if (category == null) category = "默认分类";
-
-                            // 格式化内容
-                            String displayContent = content;
-                            if (displayContent.length() > 100) {
-                                displayContent = displayContent.substring(0, 100) + "...";
-                            }
-
-                            // 格式化日期
-                            String formattedDate = formatTimestamp(modificationDate);
-
-                            // 设置显示内容
-                            views.setTextViewText(R.id.widget_title, title);
-                            views.setTextViewText(R.id.widget_content, displayContent);
-                            views.setTextViewText(R.id.widget_category, category);
-                            views.setTextViewText(R.id.widget_date, formattedDate);
-
-                            Log.d(TAG, "小部件内容更新成功");
-                        } else {
-                            Log.e(TAG, "列索引无效 - title:" + titleIndex + " note:" + noteIndex +
-                                    " date:" + dateIndex + " category:" + categoryIndex);
-                            throw new Exception("数据库列不存在");
+                        // 格式化内容（限制长度）
+                        String displayContent = content;
+                        if (displayContent != null && displayContent.length() > 100) {
+                            displayContent = displayContent.substring(0, 100) + "...";
                         }
 
+                        // 格式化日期
+                        String formattedDate = formatTimestamp(modificationDate);
+
+                        // 设置小部件显示内容
+                        views.setTextViewText(R.id.widget_title, title != null ? title : "无标题");
+                        views.setTextViewText(R.id.widget_content, displayContent != null ? displayContent : "无内容");
+                        views.setTextViewText(R.id.widget_category, category != null ? category : "默认分类");
+                        views.setTextViewText(R.id.widget_date, formattedDate);
+
+                        Log.d(TAG, "小部件内容更新: " + title);
+
                     } else {
-                        Log.w(TAG, "没有找到笔记，ID: " + noteId);
+                        // 笔记不存在
+                        Log.w(TAG, "笔记不存在，ID: " + noteId);
                         views.setTextViewText(R.id.widget_title, "笔记不存在");
                         views.setTextViewText(R.id.widget_content, "该笔记可能已被删除");
                         views.setTextViewText(R.id.widget_category, "");
                         views.setTextViewText(R.id.widget_date, "");
-
-                        // 清除无效配置
-                        NoteWidgetConfigureActivity.deleteNoteIdPref(context, appWidgetId);
                     }
 
                 } catch (Exception e) {
-                    Log.e(TAG, "查询笔记数据失败: " + e.getMessage(), e);
-
-                    // 尝试备用查询方法
-                    if (!tryAlternativeQuery(context, noteId, views)) {
-                        views.setTextViewText(R.id.widget_title, "数据加载失败");
-                        views.setTextViewText(R.id.widget_content, "错误: " + e.getClass().getSimpleName());
-                        views.setTextViewText(R.id.widget_category, "请重新配置");
-                        views.setTextViewText(R.id.widget_date, "");
-                    }
+                    Log.e(TAG, "查询笔记数据失败", e);
+                    views.setTextViewText(R.id.widget_title, "数据加载失败");
+                    views.setTextViewText(R.id.widget_content, "请重新配置");
+                    views.setTextViewText(R.id.widget_category, "");
+                    views.setTextViewText(R.id.widget_date, "");
                 } finally {
                     if (cursor != null) {
                         cursor.close();
@@ -189,128 +154,15 @@ public class NoteWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    /**
-     * 简化的调试方法
-     */
-    private static void debugCheckNoteData(Context context, int noteId) {
-        Log.d(TAG, "=== 开始调试笔记数据检查 ===");
-        Log.d(TAG, "检查笔记ID: " + noteId);
-
-        Cursor cursor = null;
-        try {
-            // 简单查询所有笔记
-            cursor = context.getContentResolver().query(
-                    NotePad.Notes.CONTENT_URI,
-                    new String[] { NotePad.Notes._ID, NotePad.Notes.COLUMN_NAME_TITLE },
-                    null, null, null
-            );
-
-            if (cursor != null) {
-                Log.d(TAG, "数据库中的笔记总数: " + cursor.getCount());
-                boolean found = false;
-                while (cursor.moveToNext()) {
-                    int id = cursor.getInt(0);
-                    String title = cursor.getString(1);
-                    Log.d(TAG, "笔记ID: " + id + ", 标题: " + title);
-                    if (id == noteId) {
-                        found = true;
-                    }
-                }
-                Log.d(TAG, "目标笔记ID " + noteId + " 是否存在: " + found);
-            } else {
-                Log.d(TAG, "查询返回null cursor");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "调试查询失败: " + e.getMessage(), e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-
-        Log.d(TAG, "=== 结束调试笔记数据检查 ===");
-    }
-
-    /**
-     * 备用查询方法 - 使用更简单直接的方式
-     */
-    private static boolean tryAlternativeQuery(Context context, int noteId, RemoteViews views) {
-        Log.d(TAG, "尝试备用查询方法");
-
-        Cursor cursor = null;
-        try {
-            // 方法2：直接查询所有笔记然后筛选
-            cursor = context.getContentResolver().query(
-                    NotePad.Notes.CONTENT_URI,
-                    new String[] {
-                            NotePad.Notes._ID,
-                            NotePad.Notes.COLUMN_NAME_TITLE,
-                            NotePad.Notes.COLUMN_NAME_NOTE,
-                            NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE,
-                            NotePad.Notes.COLUMN_NAME_CATEGORY
-                    },
-                    null, null, null
-            );
-
-            if (cursor != null) {
-                while (cursor.moveToNext()) {
-                    int currentId = cursor.getInt(0); // _ID 列
-                    if (currentId == noteId) {
-                        // 找到匹配的笔记
-                        String title = cursor.getString(1); // 标题列
-                        String content = cursor.getString(2); // 内容列
-                        long modificationDate = cursor.getLong(3); // 日期列
-                        String category = cursor.getString(4); // 分类列
-
-                        // 处理null值
-                        if (title == null) title = "无标题";
-                        if (content == null) content = "";
-                        if (category == null) category = "默认分类";
-
-                        // 格式化内容
-                        String displayContent = content;
-                        if (displayContent.length() > 100) {
-                            displayContent = displayContent.substring(0, 100) + "...";
-                        }
-
-                        // 格式化日期
-                        String formattedDate = formatTimestamp(modificationDate);
-
-                        // 设置显示内容
-                        views.setTextViewText(R.id.widget_title, title);
-                        views.setTextViewText(R.id.widget_content, displayContent);
-                        views.setTextViewText(R.id.widget_category, category);
-                        views.setTextViewText(R.id.widget_date, formattedDate);
-
-                        Log.d(TAG, "备用查询成功");
-                        return true;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "备用查询也失败: " + e.getMessage(), e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-
-        return false;
-    }
-
     private static String formatTimestamp(long timestamp) {
-        try {
-            if (timestamp <= 0) {
-                return "未知时间";
-            }
-
-            // 使用更简单可靠的日期格式化
-            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM/dd/yy HH:mm", java.util.Locale.getDefault());
-            return sdf.format(new java.util.Date(timestamp));
-        } catch (Exception e) {
-            Log.e(TAG, "格式化时间失败: " + e.getMessage());
-            // 如果格式化失败，返回原始时间戳
-            return String.valueOf(timestamp);
+        if (timestamp == 0) {
+            return "未知时间";
         }
+
+        java.util.Date date = new java.util.Date(timestamp);
+        java.text.DateFormat dateFormat = android.text.format.DateFormat.getDateFormat(null);
+        java.text.DateFormat timeFormat = android.text.format.DateFormat.getTimeFormat(null);
+
+        return dateFormat.format(date) + " " + timeFormat.format(date);
     }
 }

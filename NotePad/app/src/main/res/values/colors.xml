@@ -11,6 +11,7 @@
     <color name="background_selected">#E3F2FD</color>
     <color name="search_indicator_color">#FF6D00</color>
     <color name="white">#FFFFFF</color>
+    <color name="white_alpha_70">#B3FFFFFF</color>
     <!-- 新增主色调 -->
     <color name="colorPrimary">#2196F3</color>
     <color name="colorPrimaryDark">#1976D2</color>

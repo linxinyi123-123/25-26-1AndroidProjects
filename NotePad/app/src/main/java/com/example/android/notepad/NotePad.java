@@ -214,4 +214,65 @@ public final class NotePad {
          */
         public static final String DEFAULT_SORT_ORDER = "name ASC";
     }
+
+    /**
+     * 搜索历史表 contract
+     */
+    public static final class SearchHistory implements BaseColumns {
+
+        // This class cannot be instantiated
+        private SearchHistory() {}
+
+        /**
+         * The table name for search history
+         */
+        public static final String TABLE_NAME = "search_history";
+
+        /**
+         * Path part for the SearchHistory URI
+         */
+        private static final String PATH_SEARCH_HISTORY = "/search_history";
+
+        /**
+         * The content:// style URL for the search history table
+         */
+        public static final Uri CONTENT_URI = Uri.parse(SCHEME + AUTHORITY + PATH_SEARCH_HISTORY);
+
+        /**
+         * The MIME type of {@link #CONTENT_URI} providing a directory of search history.
+         */
+        public static final String CONTENT_TYPE = "vnd.android.cursor.dir/vnd.google.search_history";
+
+        /**
+         * The MIME type of a {@link #CONTENT_URI} sub-directory of a single search history.
+         */
+        public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/vnd.google.search_history";
+
+        /*
+         * Column definitions
+         */
+
+        /**
+         * Column name for the search query
+         * <P>Type: TEXT</P>
+         */
+        public static final String COLUMN_NAME_QUERY = "search_query";  // 修改这里：从"query"改为"search_query"
+
+        /**
+         * Column name for the search timestamp
+         * <P>Type: INTEGER (long from System.currentTimeMillis())</P>
+         */
+        public static final String COLUMN_NAME_TIMESTAMP = "timestamp";
+
+        /**
+         * Column name for the search result count
+         * <P>Type: INTEGER</P>
+         */
+        public static final String COLUMN_NAME_RESULT_COUNT = "result_count";
+
+        /**
+         * The default sort order for this table (most recent first)
+         */
+        public static final String DEFAULT_SORT_ORDER = "timestamp DESC";
+    }
 }

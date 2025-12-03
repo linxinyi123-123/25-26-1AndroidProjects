@@ -20,6 +20,13 @@ import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.app.SearchManager;
 import android.appwidget.AppWidgetManager;
+import androidx.appcompat.widget.SearchView;
+import android.view.KeyEvent;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.content.ClipboardManager;
 import android.content.ClipData;
 import android.content.ComponentName;
@@ -32,6 +39,7 @@ import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.text.SpannableString;
 import android.text.Spannable;
 import android.text.style.BackgroundColorSpan;
@@ -51,6 +59,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -59,7 +68,6 @@ import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.SearchView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -72,21 +80,35 @@ public class NotesList extends ListActivity {
 
     private static final String TAG = "NotesList";
 
-    // 删除重复的 mCurrentSearchQuery 定义，只保留一个
+    // 搜索相关变量
     private String mCurrentSearchQuery = "";
     private boolean mIsSearchMode = false;
     private TextView mSearchStatusView;
 
+    private SearchHistoryManager mSearchHistoryManager;
+
+    // 实时搜索防抖变量
+    private Handler mSearchHandler = new Handler();
+    private static final int SEARCH_DELAY_MS = 300; // 300毫秒防抖延迟
+    private Runnable mSearchRunnable;
+
+    // 高级搜索选项
+    private boolean mSearchInTitle = true;
+    private boolean mSearchInContent = true;
+    private boolean mCaseSensitive = false;
+    private boolean mWholeWord = false;
     private static final String[] PROJECTION = new String[] {
             NotePad.Notes._ID, // 0
             NotePad.Notes.COLUMN_NAME_TITLE, // 1
             NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE, // 2
             NotePad.Notes.COLUMN_NAME_CATEGORY, // 3
+            NotePad.Notes.COLUMN_NAME_NOTE, // 4 - 新增，用于搜索和显示
     };
 
     private static final int COLUMN_INDEX_TITLE = 1;
     private static final int COLUMN_INDEX_MODIFICATION_DATE = 2;
     private static final int COLUMN_INDEX_CATEGORY = 3;
+    private static final int COLUMN_INDEX_NOTE = 4;
 
     // 分类颜色映射
     private static final Map<String, Integer> CATEGORY_COLORS = new HashMap<String, Integer>();
@@ -108,23 +130,31 @@ public class NotesList extends ListActivity {
 
     // 分类筛选状态
     private String mCurrentFilterCategory = null;
-    private SimpleCursorAdapter mAdapter;
+    private NotesAdapter mAdapter;
     private int selectedColor = 0xFF2196F3;
 
-    // 在类变量声明区域添加搜索相关变量
-    private SearchView mSearchView;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 初始化Handler
+        mSearchHandler = new Handler();
+
+        // 设置布局
         setContentView(R.layout.notes_list);
 
-        // 初始化搜索状态视图 - 修正为正确的ID
+        // 初始化搜索状态视图
         mSearchStatusView = findViewById(R.id.search_status_text);
+
+        // 初始化搜索历史管理器
+        mSearchHistoryManager = new SearchHistoryManager(this);
 
         // 处理搜索意图
         handleSearchIntent(getIntent());
 
+        // 设置列表样式
         getListView().setBackgroundColor(getResources().getColor(R.color.background_light));
         getListView().setDivider(null);
         getListView().setDividerHeight(0);
@@ -138,10 +168,12 @@ public class NotesList extends ListActivity {
 
         getListView().setOnCreateContextMenuListener(this);
 
+        // 初始化EditText搜索功能
+        initEditTextSearch();
+
         // 初始化列表
         initializeList();
     }
-
     /**
      * 初始化列表数据
      */
@@ -154,55 +186,98 @@ public class NotesList extends ListActivity {
                 NotePad.Notes.DEFAULT_SORT_ORDER
         );
 
-        String[] dataColumns = {
-                NotePad.Notes.COLUMN_NAME_TITLE,
-                NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE,
-                NotePad.Notes.COLUMN_NAME_CATEGORY
-        };
+        // 使用自定义的NotesAdapter
+        mAdapter = new NotesAdapter(this, cursor);
 
-        int[] viewIDs = {
-                android.R.id.text1,
-                R.id.text2,
-                R.id.category_label
-        };
+        // 设置列表适配器
+        setListAdapter(mAdapter);
+    }
 
-        mAdapter = new SimpleCursorAdapter(
-                this,
-                R.layout.noteslist_item,
-                cursor,
-                dataColumns,
-                viewIDs
-        );
+    /**
+     * 初始化EditText搜索功能
+     */
+    private void initEditTextSearch() {
+        final EditText searchEditText = findViewById(R.id.search_edit_text);
+        final TextView clearButton = findViewById(R.id.search_clear_button);
 
-        mAdapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
+        if (searchEditText == null) {
+            Log.e(TAG, "找不到search_edit_text！检查布局文件");
+            return;
+        }
+
+        Log.d(TAG, "初始化EditText搜索框成功");
+
+        // 设置搜索按钮点击监听（键盘上的搜索键）
+        searchEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
-            public boolean setViewValue(View view, Cursor cursor, int columnIndex) {
-                if (columnIndex == COLUMN_INDEX_MODIFICATION_DATE) {
-                    TextView textView = (TextView) view;
-                    long timestamp = cursor.getLong(columnIndex);
-                    String formattedTime = formatTimestamp(timestamp);
-                    textView.setText(formattedTime);
-                    return true;
-                } else if (columnIndex == COLUMN_INDEX_CATEGORY) {
-                    TextView textView = (TextView) view;
-                    String category = cursor.getString(columnIndex);
-                    textView.setText(category);
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_SEARCH ||
+                        (event != null && event.getAction() == KeyEvent.ACTION_DOWN &&
+                                event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                    String query = v.getText().toString().trim();
 
-                    // 设置分类标签颜色
-                    Integer color = CATEGORY_COLORS.get(category);
-                    if (color != null) {
-                        textView.setTextColor(color);
-                    } else {
-                        textView.setTextColor(getResources().getColor(R.color.text_secondary));
+                    // 保存搜索历史
+                    if (!TextUtils.isEmpty(query)) {
+                        // 这里需要获取搜索结果数量，暂时设为0，稍后更新
+                        mSearchHistoryManager.saveSearchQuery(query, 0);
                     }
+
+                    performRealTimeSearch(query, true);
+
+                    // 隐藏键盘
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
                     return true;
                 }
                 return false;
             }
         });
 
-        // 设置列表适配器
-        setListAdapter(mAdapter);
+        // 设置文本变化监听（实时搜索）
+        searchEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                String query = s.toString().trim();
+
+                // 显示/隐藏清除按钮
+                if (clearButton != null) {
+                    clearButton.setVisibility(TextUtils.isEmpty(query) ? View.GONE : View.VISIBLE);
+                }
+
+                // 执行实时搜索
+                if (!TextUtils.isEmpty(query)) {
+                    performRealTimeSearch(query, false);
+                } else {
+                    clearSearch();
+                }
+            }
+        });
+
+        // 清除按钮点击事件
+        if (clearButton != null) {
+            clearButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    searchEditText.setText("");
+                    clearSearch();
+                    searchEditText.requestFocus();
+                }
+            });
+        }
+
+        // 恢复之前的搜索词
+        if (!TextUtils.isEmpty(mCurrentSearchQuery)) {
+            searchEditText.setText(mCurrentSearchQuery);
+            if (clearButton != null) {
+                clearButton.setVisibility(View.VISIBLE);
+            }
+        }
     }
 
     @Override
@@ -266,23 +341,50 @@ public class NotesList extends ListActivity {
             TextView categoryView = view.findViewById(R.id.category_label);
             TextView searchIndicator = view.findViewById(R.id.search_match_indicator);
 
-            String title = cursor.getString(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_TITLE));
-            String category = cursor.getString(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_CATEGORY));
-            long timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(NotePad.Notes.COLUMN_NAME_MODIFICATION_DATE));
+            // 使用正确的列索引获取数据
+            String title = cursor.getString(COLUMN_INDEX_TITLE);
+            String note = cursor.getString(COLUMN_INDEX_NOTE);
+            String category = cursor.getString(COLUMN_INDEX_CATEGORY);
+            long timestamp = cursor.getLong(COLUMN_INDEX_MODIFICATION_DATE);
 
             // 设置基本内容
             timestampView.setText(formatTimestamp(timestamp));
             categoryView.setText(category);
 
             // 处理搜索高亮
-            if (mIsSearchMode && !mCurrentSearchQuery.isEmpty()) {
-                highlightSearchText(titleView, title, mCurrentSearchQuery);
+            if (mIsSearchMode && !TextUtils.isEmpty(mCurrentSearchQuery)) {
+                // 高级高亮：检查标题、内容和分类中的匹配
+                boolean titleMatch = containsSearchTerm(title, mCurrentSearchQuery);
+                boolean contentMatch = containsSearchTerm(note, mCurrentSearchQuery);
+                boolean categoryMatch = containsSearchTerm(category, mCurrentSearchQuery);
 
-                // 显示搜索匹配指示器
-                if (containsSearchTerm(title, category, mCurrentSearchQuery)) {
+                if (titleMatch || contentMatch || categoryMatch) {
+                    // 显示搜索匹配指示器
                     searchIndicator.setVisibility(View.VISIBLE);
-                    searchIndicator.setText("🔍 相关");
+
+                    // 设置指示器文本和颜色
+                    if (titleMatch && contentMatch) {
+                        searchIndicator.setText("🔍 标题和内容");
+                        searchIndicator.setBackgroundColor(0xFF4CAF50); // 绿色
+                    } else if (titleMatch) {
+                        searchIndicator.setText("🔍 标题");
+                        searchIndicator.setBackgroundColor(0xFF2196F3); // 蓝色
+                    } else if (contentMatch) {
+                        searchIndicator.setText("🔍 内容");
+                        searchIndicator.setBackgroundColor(0xFFFF9800); // 橙色
+                    } else if (categoryMatch) {
+                        searchIndicator.setText("🔍 分类");
+                        searchIndicator.setBackgroundColor(0xFF9C27B0); // 紫色
+                    }
+
+                    // 应用高级高亮
+                    if (titleMatch) {
+                        highlightSearchText(titleView, title, mCurrentSearchQuery, true);
+                    } else {
+                        titleView.setText(title);
+                    }
                 } else {
+                    titleView.setText(title);
                     searchIndicator.setVisibility(View.GONE);
                 }
             } else {
@@ -292,68 +394,134 @@ public class NotesList extends ListActivity {
             }
         }
 
-        private void highlightSearchText(TextView textView, String text, String searchQuery) {
-            if (text.toLowerCase().contains(searchQuery.toLowerCase())) {
-                SpannableString spannable = new SpannableString(text);
-                String lowerText = text.toLowerCase();
-                String lowerQuery = searchQuery.toLowerCase();
+        /**
+         * 检查文本是否包含搜索词（支持大小写不敏感）
+         */
+        private boolean containsSearchTerm(String text, String searchQuery) {
+            if (TextUtils.isEmpty(text) || TextUtils.isEmpty(searchQuery)) {
+                return false;
+            }
 
+            if (mCaseSensitive) {
+                return text.contains(searchQuery);
+            } else {
+                return text.toLowerCase().contains(searchQuery.toLowerCase());
+            }
+        }
+
+        /**
+         * 高亮搜索文本（支持多关键词）
+         */
+        private void highlightSearchText(TextView textView, String text, String searchQuery, boolean isTitle) {
+            if (TextUtils.isEmpty(text) || TextUtils.isEmpty(searchQuery)) {
+                textView.setText(text);
+                return;
+            }
+
+            SpannableString spannable = new SpannableString(text);
+            String lowerText = mCaseSensitive ? text : text.toLowerCase();
+            String lowerQuery = mCaseSensitive ? searchQuery : searchQuery.toLowerCase();
+
+            // 分割搜索词（支持多个关键词，用空格分隔）
+            String[] keywords = searchQuery.split("\\s+");
+
+            for (String keyword : keywords) {
+                if (TextUtils.isEmpty(keyword.trim())) {
+                    continue;
+                }
+
+                String lowerKeyword = mCaseSensitive ? keyword : keyword.toLowerCase();
                 int startIndex = 0;
-                while ((startIndex = lowerText.indexOf(lowerQuery, startIndex)) != -1) {
-                    int endIndex = startIndex + searchQuery.length();
+
+                while ((startIndex = lowerText.indexOf(lowerKeyword, startIndex)) != -1) {
+                    int endIndex = startIndex + keyword.length();
+
+                    // 根据匹配位置设置不同的高亮颜色
+                    int highlightColor;
+                    if (isTitle) {
+                        highlightColor = 0x80FFEB3B; // 标题高亮：黄色，半透明
+                    } else {
+                        highlightColor = 0x8003A9F4; // 内容高亮：蓝色，半透明
+                    }
+
                     spannable.setSpan(
-                            new BackgroundColorSpan(Color.YELLOW),
+                            new BackgroundColorSpan(highlightColor),
                             startIndex,
                             endIndex,
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                     );
+
+                    // 加粗匹配的文本
                     spannable.setSpan(
                             new StyleSpan(Typeface.BOLD),
                             startIndex,
                             endIndex,
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                     );
+
                     startIndex = endIndex;
                 }
-                textView.setText(spannable);
-            } else {
-                textView.setText(text);
             }
-        }
 
-        private boolean containsSearchTerm(String title, String category, String query) {
-            return title.toLowerCase().contains(query.toLowerCase()) ||
-                    category.toLowerCase().contains(query.toLowerCase());
+            textView.setText(spannable);
         }
     }
 
-    // 添加清除搜索的方法
+    /**
+     * 清除搜索
+     */
     public void clearSearch() {
         mCurrentSearchQuery = "";
         mIsSearchMode = false;
+
+        // 清除EditText中的文本
+        EditText searchEditText = findViewById(R.id.search_edit_text);
+        if (searchEditText != null) {
+            searchEditText.setText("");
+        }
+
+        // 更新搜索状态
         updateSearchStatus();
+
+        // 刷新列表（显示所有笔记）
         refreshNotesList();
+
+        // 恢复标题
+        setTitle("笔记");
     }
 
-    // 合并后的 onCreateOptionsMenu 方法
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // 加载菜单资源
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.list_options_menu, menu);
 
-        // 设置搜索菜单项的点击监听器
-        MenuItem searchItem = menu.findItem(R.id.menu_search);
-        searchItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                showSearchDialog();
-                return true;
-            }
-        });
+        // 设置搜索历史菜单项点击监听器
+        MenuItem historyItem = menu.findItem(R.id.menu_search_history);
+        if (historyItem != null) {
+            historyItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                @Override
+                public boolean onMenuItemClick(MenuItem item) {
+                    showSearchHistoryDialog();
+                    return true;
+                }
+            });
+        }
+
+        // 设置高级搜索菜单项点击监听器
+        MenuItem advancedItem = menu.findItem(R.id.menu_advanced_search);
+        if (advancedItem != null) {
+            advancedItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                @Override
+                public boolean onMenuItemClick(MenuItem item) {
+                    showAdvancedSearchOptions();
+                    return true;
+                }
+            });
+        }
 
         // 如果正在搜索，显示清除搜索的选项
-        if (mIsSearchMode) {
+        if (mIsSearchMode && !TextUtils.isEmpty(mCurrentSearchQuery)) {
             menu.add(0, Menu.FIRST + 100, 0, "清除搜索")
                     .setIcon(android.R.drawable.ic_menu_close_clear_cancel)
                     .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
@@ -366,6 +534,299 @@ public class NotesList extends ListActivity {
                 new ComponentName(this, NotesList.class), null, intent, 0, null);
 
         return super.onCreateOptionsMenu(menu);
+    }
+
+
+
+    /**
+     * 执行实时搜索（带防抖机制）
+     * @param query 搜索关键词
+     * @param immediate 是否立即执行（用户提交时）
+     */
+    private void performRealTimeSearch(String query, boolean immediate) {
+        Log.d(TAG, "performRealTimeSearch called, query: " + query + ", immediate: " + immediate);
+
+        // 取消之前的搜索任务
+        if (mSearchRunnable != null) {
+            mSearchHandler.removeCallbacks(mSearchRunnable);
+        }
+
+        // 如果查询为空，立即清除搜索
+        if (TextUtils.isEmpty(query)) {
+            Log.d(TAG, "Query is empty, clearing search");
+            clearSearch();
+            return;
+        }
+
+        final String searchQuery = query.trim();
+        Log.d(TAG, "Search query trimmed: " + searchQuery);
+
+        // 创建新的搜索任务
+        mSearchRunnable = new Runnable() {
+            @Override
+            public void run() {
+                Log.d(TAG, "Executing search runnable with query: " + searchQuery);
+                // 执行实际搜索
+                executeSearch(searchQuery);
+            }
+        };
+
+        // 根据情况设置延迟或立即执行
+        if (immediate) {
+            // 用户提交，立即执行
+            Log.d(TAG, "Immediate search execution");
+            mSearchHandler.post(mSearchRunnable);
+        } else {
+            // 实时输入，延迟执行防抖
+            Log.d(TAG, "Delayed search execution (debounce)");
+            mSearchHandler.postDelayed(mSearchRunnable, SEARCH_DELAY_MS);
+        }
+    }
+
+    /**
+     * 执行实际搜索
+     */
+    private void executeSearch(String query) {
+        Log.d(TAG, "executeSearch starting, query: " + query);
+
+        // 更新当前搜索查询
+        mCurrentSearchQuery = query;
+        mIsSearchMode = true;
+
+        // 更新搜索状态显示
+        updateSearchStatus();
+
+        // 执行搜索并刷新列表
+        refreshNotesList();
+
+        Log.d(TAG, "executeSearch completed, mIsSearchMode: " + mIsSearchMode);
+    }
+
+
+
+    /**
+     * 显示搜索统计
+     */
+    private void showSearchStats() {
+        // 获取搜索结果数量
+        int resultCount = 0;
+        if (mAdapter != null) {
+            resultCount = mAdapter.getCount();
+        }
+
+        // 在标题栏显示结果数量
+        String title = "笔记";
+        if (resultCount > 0) {
+            title += " (" + resultCount + " 个结果)";
+        }
+        setTitle(title);
+
+        // 如果有搜索结果，保存到历史记录
+        if (resultCount > 0 && !TextUtils.isEmpty(mCurrentSearchQuery)) {
+            mSearchHistoryManager.saveSearchQuery(mCurrentSearchQuery, resultCount);
+        }
+    }
+
+    /**
+     * 显示搜索历史对话框
+     */
+    private void showSearchHistoryDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.search_history_dialog, null);
+        builder.setView(dialogView);
+
+        // 初始化对话框组件
+        final ListView historyListView = dialogView.findViewById(R.id.search_history_list);
+        final TextView emptyTextView = dialogView.findViewById(R.id.empty_history_text);
+        Button clearButton = dialogView.findViewById(R.id.clear_history_button);
+        Button closeButton = dialogView.findViewById(R.id.close_button);
+
+        // 加载搜索历史
+        final List<SearchHistoryManager.SearchHistoryItem> historyList =
+                mSearchHistoryManager.getSearchHistory();
+
+        if (historyList.isEmpty()) {
+            emptyTextView.setVisibility(View.VISIBLE);
+            historyListView.setVisibility(View.GONE);
+            clearButton.setEnabled(false);
+        } else {
+            emptyTextView.setVisibility(View.GONE);
+            historyListView.setVisibility(View.VISIBLE);
+            clearButton.setEnabled(true);
+
+            // 创建适配器
+            HistoryAdapter adapter = new HistoryAdapter(historyList);
+            historyListView.setAdapter(adapter);
+
+            // 设置点击事件
+            historyListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    SearchHistoryManager.SearchHistoryItem item = historyList.get(position);
+
+                    // 设置搜索框文本并执行搜索
+                    EditText searchEditText = findViewById(R.id.search_edit_text);
+                    if (searchEditText != null) {
+                        searchEditText.setText(item.query);
+                        // 请求焦点并执行搜索
+                        searchEditText.requestFocus();
+                        performRealTimeSearch(item.query, true);
+                    }
+
+                    // 关闭对话框
+                    ((AlertDialog) view.getTag()).dismiss();
+                }
+            });
+
+            // 设置长按删除事件
+            historyListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+                @Override
+                public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                    SearchHistoryManager.SearchHistoryItem item = historyList.get(position);
+
+                    new AlertDialog.Builder(NotesList.this)
+                            .setTitle("删除搜索记录")
+                            .setMessage("确定要删除搜索记录 \"" + item.query + "\" 吗？")
+                            .setPositiveButton("删除", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    mSearchHistoryManager.deleteHistoryItem(item.id);
+                                    showSearchHistoryDialog(); // 刷新对话框
+                                    Toast.makeText(NotesList.this, "搜索记录已删除", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .setNegativeButton("取消", null)
+                            .show();
+
+                    return true;
+                }
+            });
+        }
+
+        // 设置清除历史按钮
+        clearButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new AlertDialog.Builder(NotesList.this)
+                        .setTitle("确认清除")
+                        .setMessage("确定要清除所有搜索历史吗？")
+                        .setPositiveButton("清除", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                mSearchHistoryManager.clearAllHistory();
+                                showSearchHistoryDialog(); // 刷新对话框
+                                Toast.makeText(NotesList.this, "搜索历史已清除", Toast.LENGTH_SHORT).show();
+                            }
+                        })
+                        .setNegativeButton("取消", null)
+                        .show();
+            }
+        });
+
+        // 设置关闭按钮
+        final AlertDialog dialog = builder.create();
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+
+        dialog.show();
+
+        // 将对话框保存到视图的tag中，方便在点击事件中关闭
+        dialogView.setTag(dialog);
+    }
+
+    /**
+     * 搜索历史适配器
+     */
+    private class HistoryAdapter extends BaseAdapter {
+        private List<SearchHistoryManager.SearchHistoryItem> mHistoryList;
+
+        public HistoryAdapter(List<SearchHistoryManager.SearchHistoryItem> historyList) {
+            mHistoryList = historyList;
+        }
+
+        @Override
+        public int getCount() {
+            return mHistoryList.size();
+        }
+
+        @Override
+        public SearchHistoryManager.SearchHistoryItem getItem(int position) {
+            return mHistoryList.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            ViewHolder holder;
+            if (convertView == null) {
+                convertView = getLayoutInflater().inflate(R.layout.search_history_item, parent, false);
+                holder = new ViewHolder();
+                holder.queryView = convertView.findViewById(R.id.history_query);
+                holder.countView = convertView.findViewById(R.id.result_count);
+                holder.timeView = convertView.findViewById(R.id.search_time);
+                convertView.setTag(holder);
+            } else {
+                holder = (ViewHolder) convertView.getTag();
+            }
+
+            SearchHistoryManager.SearchHistoryItem item = getItem(position);
+
+            // 设置查询文本
+            holder.queryView.setText(item.query);
+
+            // 设置结果数量
+            String resultText = getResources().getQuantityString(
+                    R.plurals.search_results_count,
+                    item.resultCount,
+                    item.resultCount
+            );
+            holder.countView.setText(resultText);
+
+            // 设置时间
+            holder.timeView.setText(formatHistoryTime(item.timestamp));
+
+            return convertView;
+        }
+
+        class ViewHolder {
+            TextView queryView;
+            TextView countView;
+            TextView timeView;
+        }
+
+        /**
+         * 格式化历史时间
+         */
+        private String formatHistoryTime(long timestamp) {
+            long now = System.currentTimeMillis();
+            long diff = now - timestamp;
+
+            // 转换为秒
+            long diffSeconds = diff / 1000;
+
+            if (diffSeconds < 60) {
+                return "刚刚";
+            } else if (diffSeconds < 3600) {
+                return (diffSeconds / 60) + "分钟前";
+            } else if (diffSeconds < 86400) {
+                return (diffSeconds / 3600) + "小时前";
+            } else if (diffSeconds < 2592000) { // 30天
+                return (diffSeconds / 86400) + "天前";
+            } else {
+                // 超过30天显示具体日期
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+                return sdf.format(new java.util.Date(timestamp));
+            }
+        }
     }
 
     // 合并后的 onOptionsItemSelected 方法
@@ -398,10 +859,8 @@ public class NotesList extends ListActivity {
                 showCategoryFilterDialog();
             }
             return true;
-        } else if (id == R.id.menu_search) {
-            showSearchDialog();
-            return true;
         }
+        // 其他菜单项已在onCreateOptionsMenu中设置监听器
         return super.onOptionsItemSelected(item);
     }
 
@@ -607,10 +1066,11 @@ public class NotesList extends ListActivity {
         mCurrentFilterCategory = null;
         mCurrentSearchQuery = null;
 
-        // 如果搜索框是展开状态，关闭它
-        if (mSearchView != null) {
-            mSearchView.setQuery("", false);
-            mSearchView.clearFocus();
+        // 清除搜索框文本
+        EditText searchEditText = findViewById(R.id.search_edit_text);
+        if (searchEditText != null) {
+            searchEditText.setText("");
+            searchEditText.clearFocus();
         }
 
         refreshNotesList();
@@ -891,7 +1351,7 @@ public class NotesList extends ListActivity {
     }
 
     /**
-     * 刷新笔记列表
+     * 刷新笔记列表（支持高级搜索）
      */
     private void refreshNotesList() {
         // 构建查询条件
@@ -906,19 +1366,24 @@ public class NotesList extends ListActivity {
         }
 
         // 处理搜索查询
-        if (mCurrentSearchQuery != null && !mCurrentSearchQuery.isEmpty()) {
-            String searchCondition = "(" + NotePad.Notes.COLUMN_NAME_TITLE + " LIKE ? OR " +
-                    NotePad.Notes.COLUMN_NAME_NOTE + " LIKE ?)";
+        if (!TextUtils.isEmpty(mCurrentSearchQuery)) {
+            // 构建高级搜索条件
+            String searchCondition = buildAdvancedSearchCondition();
 
-            String searchPattern = "%" + mCurrentSearchQuery + "%";
             if (selection == null) {
                 selection = searchCondition;
-                selectionArgsList.add(searchPattern);
-                selectionArgsList.add(searchPattern);
+                // 添加搜索参数
+                String[] searchArgs = getSearchArgs(mCurrentSearchQuery);
+                for (String arg : searchArgs) {
+                    selectionArgsList.add(arg);
+                }
             } else {
                 selection += " AND " + searchCondition;
-                selectionArgsList.add(searchPattern);
-                selectionArgsList.add(searchPattern);
+                // 添加搜索参数
+                String[] searchArgs = getSearchArgs(mCurrentSearchQuery);
+                for (String arg : searchArgs) {
+                    selectionArgsList.add(arg);
+                }
             }
         }
 
@@ -944,10 +1409,207 @@ public class NotesList extends ListActivity {
             if (oldCursor != null) {
                 oldCursor.close();
             }
+
+            // 如果有搜索词，保存搜索历史
+            if (!TextUtils.isEmpty(mCurrentSearchQuery) && newCursor != null) {
+                int resultCount = newCursor.getCount();
+                mSearchHistoryManager.saveSearchQuery(mCurrentSearchQuery, resultCount);
+            }
         }
 
         // 更新界面状态
         updateUIState();
+    }
+
+    /**
+     * 构建高级搜索条件
+     */
+    private String buildAdvancedSearchCondition() {
+        List<String> conditions = new ArrayList<>();
+        String searchPattern = mCurrentSearchQuery;
+
+        // 处理大小写敏感
+        if (!mCaseSensitive) {
+            // 如果不区分大小写，使用LOWER函数
+            searchPattern = searchPattern.toLowerCase();
+        }
+
+        // 处理全词匹配
+        if (mWholeWord) {
+            searchPattern = " " + searchPattern + " ";
+        }
+
+        // 构建搜索模式
+        String likePattern = "%" + searchPattern + "%";
+
+        // 添加标题搜索条件
+        if (mSearchInTitle) {
+            if (mCaseSensitive) {
+                conditions.add(NotePad.Notes.COLUMN_NAME_TITLE + " LIKE ?");
+            } else {
+                conditions.add("LOWER(" + NotePad.Notes.COLUMN_NAME_TITLE + ") LIKE ?");
+            }
+        }
+
+        // 添加内容搜索条件
+        if (mSearchInContent) {
+            if (mCaseSensitive) {
+                conditions.add(NotePad.Notes.COLUMN_NAME_NOTE + " LIKE ?");
+            } else {
+                conditions.add("LOWER(" + NotePad.Notes.COLUMN_NAME_NOTE + ") LIKE ?");
+            }
+        }
+
+        // 添加分类搜索条件
+        if (mSearchInTitle && mSearchInContent) {
+            if (mCaseSensitive) {
+                conditions.add(NotePad.Notes.COLUMN_NAME_CATEGORY + " LIKE ?");
+            } else {
+                conditions.add("LOWER(" + NotePad.Notes.COLUMN_NAME_CATEGORY + ") LIKE ?");
+            }
+        }
+
+        // 如果没有选择任何搜索范围，默认搜索标题和内容
+        if (conditions.isEmpty()) {
+            if (mCaseSensitive) {
+                conditions.add(NotePad.Notes.COLUMN_NAME_TITLE + " LIKE ?");
+                conditions.add(NotePad.Notes.COLUMN_NAME_NOTE + " LIKE ?");
+            } else {
+                conditions.add("LOWER(" + NotePad.Notes.COLUMN_NAME_TITLE + ") LIKE ?");
+                conditions.add("LOWER(" + NotePad.Notes.COLUMN_NAME_NOTE + ") LIKE ?");
+            }
+        }
+
+        // 组合条件
+        if (conditions.size() == 1) {
+            return conditions.get(0);
+        } else {
+            StringBuilder sb = new StringBuilder("(");
+            for (int i = 0; i < conditions.size(); i++) {
+                if (i > 0) {
+                    sb.append(" OR ");
+                }
+                sb.append(conditions.get(i));
+            }
+            sb.append(")");
+            return sb.toString();
+        }
+    }
+
+    /**
+     * 获取搜索参数
+     */
+    private String[] getSearchArgs(String query) {
+        List<String> args = new ArrayList<>();
+        String searchPattern = query;
+
+        if (!mCaseSensitive) {
+            searchPattern = searchPattern.toLowerCase();
+        }
+
+        if (mWholeWord) {
+            searchPattern = " " + searchPattern + " ";
+        }
+
+        String likePattern = "%" + searchPattern + "%";
+
+        // 根据搜索条件添加参数
+        if (mSearchInTitle) {
+            args.add(likePattern);
+        }
+
+        if (mSearchInContent) {
+            args.add(likePattern);
+        }
+
+        // 如果同时搜索标题和内容，也搜索分类
+        if (mSearchInTitle && mSearchInContent) {
+            args.add(likePattern);
+        }
+
+        // 如果没有选择任何搜索范围，默认搜索标题和内容
+        if (args.isEmpty()) {
+            args.add(likePattern);
+            args.add(likePattern);
+        }
+
+        return args.toArray(new String[0]);
+    }
+
+    /**
+     * 显示高级搜索选项对话框
+     */
+    private void showAdvancedSearchOptions() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("高级搜索选项");
+
+        // 创建自定义布局
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(20, 20, 20, 20);
+
+// 标题搜索复选框
+        final CheckBox titleCheckBox = new CheckBox(this);
+        titleCheckBox.setText("搜索标题");
+        titleCheckBox.setChecked(mSearchInTitle);
+        layout.addView(titleCheckBox);
+
+// 内容搜索复选框
+        final CheckBox contentCheckBox = new CheckBox(this);
+        contentCheckBox.setText("搜索内容");
+        contentCheckBox.setChecked(mSearchInContent);
+        layout.addView(contentCheckBox);
+
+// 大小写敏感复选框
+        final CheckBox caseCheckBox = new CheckBox(this);
+        caseCheckBox.setText("区分大小写");
+        caseCheckBox.setChecked(mCaseSensitive);
+        layout.addView(caseCheckBox);
+
+// 全词匹配复选框
+        final CheckBox wordCheckBox = new CheckBox(this);
+        wordCheckBox.setText("全词匹配");
+        wordCheckBox.setChecked(mWholeWord);
+        layout.addView(wordCheckBox);
+
+        builder.setView(layout);
+
+        // 设置按钮
+        builder.setPositiveButton("应用", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // 保存设置
+                mSearchInTitle = titleCheckBox.isChecked();
+                mSearchInContent = contentCheckBox.isChecked();
+                mCaseSensitive = caseCheckBox.isChecked();
+                mWholeWord = wordCheckBox.isChecked();
+
+                // 如果当前有搜索，重新执行搜索
+                if (!TextUtils.isEmpty(mCurrentSearchQuery)) {
+                    executeSearch(mCurrentSearchQuery);
+                }
+
+                Toast.makeText(NotesList.this, "搜索选项已更新", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        builder.setNegativeButton("取消", null);
+
+        // 添加重置按钮
+        builder.setNeutralButton("重置", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // 重置为默认设置
+                mSearchInTitle = true;
+                mSearchInContent = true;
+                mCaseSensitive = false;
+                mWholeWord = false;
+
+                Toast.makeText(NotesList.this, "搜索选项已重置", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        builder.show();
     }
 
     /**
@@ -1134,7 +1796,7 @@ public class NotesList extends ListActivity {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         menu.addIntentOptions(Menu.CATEGORY_ALTERNATIVE, 0, 0,
                 new ComponentName(this, NotesList.class), null, intent, 0, null);
-        
+
     }
 
     @Override
@@ -1210,10 +1872,6 @@ public class NotesList extends ListActivity {
         // 刷新列表以显示可能的更改
         refreshNotesList();
 
-        // 确保搜索状态正确
-        if (mSearchView != null && mCurrentSearchQuery != null && !mCurrentSearchQuery.isEmpty()) {
-            mSearchView.setQuery(mCurrentSearchQuery, false);
-        }
     }
 
     /**

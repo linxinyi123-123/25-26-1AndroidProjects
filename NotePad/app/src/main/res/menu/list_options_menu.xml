@@ -21,11 +21,16 @@
         android:title="分类筛选"
         app:showAsAction="ifRoom" />
 
-    <!-- 搜索菜单项 - 改为普通菜单项 -->
-    <item android:id="@+id/menu_search"
-        android:icon="@android:drawable/ic_menu_search"
-        android:title="搜索"
+    <!-- 搜索历史 -->
+    <item android:id="@+id/menu_search_history"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:title="搜索历史"
         app:showAsAction="ifRoom" />
+
+    <!-- 高级搜索选项 -->
+    <item android:id="@+id/menu_advanced_search"
+        android:title="高级搜索"
+        app:showAsAction="never" />
 
     <!-- 粘贴 -->
     <item android:id="@+id/menu_paste"
